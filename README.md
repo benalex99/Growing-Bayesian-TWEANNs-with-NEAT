@@ -1,0 +1,2 @@
+# STA
+Algorithmic Stock Trading
