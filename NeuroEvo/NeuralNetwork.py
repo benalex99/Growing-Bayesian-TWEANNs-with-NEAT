@@ -6,7 +6,7 @@ class NeuralNetwork:
 
     layers = []
 
-    # Initialize a network from a Genome
+    # Initialize a network from a Genome (using NEAT?)
     def __init__(self, Genome):
         return
 

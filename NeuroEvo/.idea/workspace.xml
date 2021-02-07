@@ -2,14 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e610d815-e52a-422e-b8ef-049a37adcb99" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/Optimizers/Innovator_Rethinker/IR.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Optimizers/NEAT/NEAT.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Genome/ConnectionGene.py" beforeDir="false" afterPath="$PROJECT_DIR$/Genome/ConnectionGene.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Genome/Genome.py" beforeDir="false" afterPath="$PROJECT_DIR$/Genome/Genome.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Genome/NodeGene.py" beforeDir="false" afterPath="$PROJECT_DIR$/Genome/NodeGene.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Main.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Optimizers/NEAT (Neuroevolution of Augmented Topologies)/ScoredGenome.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/NeuralNetwork.py" beforeDir="false" afterPath="$PROJECT_DIR$/NeuralNetwork.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/Trainer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Optimizers/NEAT/NEAT.py" beforeDir="false" afterPath="$PROJECT_DIR$/Optimizers/NEAT (Neuroevolution of Augmented Topologies)/NEAT.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -32,7 +28,7 @@
         <entry file="file://$PROJECT_DIR$/NeuralNetwork.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="308">
-              <caret line="14" column="14" lean-forward="true" selection-start-line="14" selection-start-column="14" selection-end-line="14" selection-end-column="14" />
+              <caret line="14" column="12" selection-start-line="14" selection-start-column="12" selection-end-line="14" selection-end-column="12" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
               </folding>
@@ -40,11 +36,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Optimizers/Innovator_Rethinker/IR.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="110">
-              <caret line="5" column="3" selection-start-line="5" selection-start-column="3" selection-end-line="5" selection-end-column="3" />
+            <state>
+              <caret lean-forward="true" />
             </state>
           </provider>
         </entry>
@@ -52,11 +48,20 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Genome/Genome.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="154">
-              <caret line="7" selection-start-line="7" selection-end-line="7" />
+            <state relative-caret-position="132">
+              <caret line="6" column="12" lean-forward="true" selection-start-line="6" selection-start-column="12" selection-end-line="6" selection-end-column="12" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/Optimizers/NEAT (Neuroevolution of Augmented Topologies)/ScoredGenome.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="44">
+              <caret line="2" column="35" selection-start-line="2" selection-start-column="35" selection-end-line="2" selection-end-column="35" />
             </state>
           </provider>
         </entry>
@@ -108,12 +113,13 @@
         <option value="$PROJECT_DIR$/NodeGene.py" />
         <option value="$PROJECT_DIR$/Trainer.py" />
         <option value="$PROJECT_DIR$/Main.py" />
-        <option value="$PROJECT_DIR$/Genome/Genome.py" />
         <option value="$PROJECT_DIR$/Genome/ConnectionGene.py" />
         <option value="$PROJECT_DIR$/Genome/NodeGene.py" />
-        <option value="$PROJECT_DIR$/NeuralNetwork.py" />
         <option value="$PROJECT_DIR$/Optimizers/NEAT.py" />
         <option value="$PROJECT_DIR$/Optimizers/Innovator_Rethinker/IR.py" />
+        <option value="$PROJECT_DIR$/NeuralNetwork.py" />
+        <option value="$PROJECT_DIR$/Genome/Genome.py" />
+        <option value="$PROJECT_DIR$/Optimizers/NEAT (Neuroevolution of Augmented Topologies)/ScoredGenome.py" />
       </list>
     </option>
   </component>
@@ -142,6 +148,12 @@
               <item name="NeuroEvo" type="b2602c69:ProjectViewProjectNode" />
               <item name="NeuroEvo" type="462c0819:PsiDirectoryNode" />
               <item name="Optimizers" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="NeuroEvo" type="b2602c69:ProjectViewProjectNode" />
+              <item name="NeuroEvo" type="462c0819:PsiDirectoryNode" />
+              <item name="Optimizers" type="462c0819:PsiDirectoryNode" />
+              <item name="NEAT (Neuroevolution of Augmented Topologies)" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -183,7 +195,6 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.24973656" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -233,33 +244,40 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Genome/Genome.py">
+    <entry file="file://$PROJECT_DIR$/Optimizers/NEAT (Neuroevolution of Augmented Topologies)/NEAT.py">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Optimizers/Innovator_Rethinker/IR.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="154">
-          <caret line="7" selection-start-line="7" selection-end-line="7" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
+        <state>
+          <caret lean-forward="true" />
         </state>
       </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Optimizers/NEAT/NEAT.py">
-      <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/NeuralNetwork.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="308">
-          <caret line="14" column="14" lean-forward="true" selection-start-line="14" selection-start-column="14" selection-end-line="14" selection-end-column="14" />
+          <caret line="14" column="12" selection-start-line="14" selection-start-column="12" selection-end-line="14" selection-end-column="12" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Optimizers/Innovator_Rethinker/IR.py">
+    <entry file="file://$PROJECT_DIR$/Genome/Genome.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="110">
-          <caret line="5" column="3" selection-start-line="5" selection-start-column="3" selection-end-line="5" selection-end-column="3" />
+        <state relative-caret-position="132">
+          <caret line="6" column="12" lean-forward="true" selection-start-line="6" selection-start-column="12" selection-end-line="6" selection-end-column="12" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Optimizers/NEAT (Neuroevolution of Augmented Topologies)/ScoredGenome.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="44">
+          <caret line="2" column="35" selection-start-line="2" selection-start-column="35" selection-end-line="2" selection-end-column="35" />
         </state>
       </provider>
     </entry>
