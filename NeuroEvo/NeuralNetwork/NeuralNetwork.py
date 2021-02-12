@@ -1,8 +1,7 @@
-import Genome
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from NeuralNetwork.Layer import Layer
+from NeuroEvo.NeuralNetwork.Layer import Layer
 
 # Neural network class for running predictions on the GPU
 class NeuralNetwork(nn.Module):

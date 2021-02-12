@@ -1,6 +1,11 @@
 import numpy as np
+<<<<<<< Updated upstream
 from NeuroEvo.NeuralNetwork import NeuralNetwork
 
+=======
+from NeuroEvo.NeuralNetwork.NeuralNetwork import NeuralNetwork
+import torch
+>>>>>>> Stashed changes
 
 
 # Stores the architecture of a neural network
@@ -42,21 +47,42 @@ class Genome:
         maxLayer = 0
         # Determine the layers to which the nodes belong, based on the assumption that a connection is always
         # towards the next layer
-        notDone = False
+        notDone = True
         while(notDone):
             notDone = False
             for edge in self.edges:
-                if(layerNrs[edge.fromNr] <= layerNrs[edge.toNr]):
+                if(layerNrs[edge.fromNr] >= layerNrs[edge.toNr]):
                     notDone = True
-                    layerNrs[edge.toNr] = self.nodes[edge.fromNr] + 1
+                    layerNrs[edge.toNr] = layerNrs[edge.fromNr] + 1
                     maxLayer = max(maxLayer, layerNrs[edge.toNr])
-        layers = np.array()
-        for i, layerNr in enumerate(layerNrs):
-            layers[layerNr].add(i)
-        for edge in self.edges:
-            weights[edge.fromNr][edge.toNr] = edge.weight
 
+        # Group nodes into lists belonging to their respective layer
+        layerGroups = []
+        for i in range(int(maxLayer)):
+            group = []
+            for i2,layer in enumerate(layerNrs):
+                group.append(i2)
+            layerGroups.append(group)
 
-        nn = NeuralNetwork(layerNrs)
+        print("naise")
 
-        return
+        # Fill the weight matrices
+        matrices = []
+        biases = []
+        for i,layer in enumerate(layerGroups):
+            ins = []
+            outs = []
+            weights = []
+            for edge in self.edges:
+                if(layerNrs[edge.fromNr] == i):
+                    ins.append(edge.fromNr)
+                    outs.append(edge.toNr)
+                    weights.append(edge.weight)
+
+            inOuts = torch.LongTensor([ins,outs])
+            weights = torch.FloatTensor(weights)
+            matrices.append(torch.sparse.FloatTensor(inOuts, weights).to_dense())
+            biases.append(torch.tensor(np.zeros(len(layer))))
+
+        return NeuralNetwork(list(zip(matrices, biases)))
+
