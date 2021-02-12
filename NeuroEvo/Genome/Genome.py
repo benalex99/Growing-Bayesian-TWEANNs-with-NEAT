@@ -1,5 +1,5 @@
 import numpy as np
-from NeuroEvo.NeuralNetwork.NeuralNetwork import NeuralNetwork
+from NeuralNetwork.NeuralNetwork import NeuralNetwork
 
 
 

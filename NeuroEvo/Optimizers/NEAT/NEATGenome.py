@@ -3,7 +3,7 @@
 # Needs to implement a Genome base class.
 import numpy as np
 
-from NeuroEvo.Genome import Genome, NodeGene, ConnectionGene
+from Genome import Genome, NodeGene, ConnectionGene
 import random
 
 
