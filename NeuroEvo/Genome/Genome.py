@@ -42,4 +42,23 @@ class Genome:
 
     # Returns a pytorch neural network from the genome
     def toNN(self):
+        layerNrs = np.zeros(len(self.nodes))
+        maxLayer = 0
+        # Determine the layers to which the nodes belong, based on the assumption that a connection is always
+        # towards the next layer
+        notDone = False
+        while (notDone):
+            notDone = False
+            for edge in self.edges:
+                if (layerNrs[edge.fromNr] <= layerNrs[edge.toNr]):
+                    notDone = True
+                    layerNrs[edge.toNr] = self.nodes[edge.fromNr] + 1
+                    maxLayer = max(maxLayer, layerNrs[edge.toNr])
+        layers = np.array()
+        for layerNr in layerNrs:
+            layers.add
+        for edge in self.edges:
+            weights[edge.fromNr][edge.toNr] = edge.weight
+
+        nn = NeuralNetwork(layerNrs)
         return
