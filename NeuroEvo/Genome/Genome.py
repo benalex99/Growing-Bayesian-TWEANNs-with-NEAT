@@ -1,11 +1,8 @@
 import numpy as np
-<<<<<<< Updated upstream
 from NeuroEvo.NeuralNetwork import NeuralNetwork
 
-=======
 from NeuroEvo.NeuralNetwork.NeuralNetwork import NeuralNetwork
 import torch
->>>>>>> Stashed changes
 
 
 # Stores the architecture of a neural network
