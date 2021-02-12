@@ -6,3 +6,6 @@ NeuroEvo/NeuralNetwork/__pycache__/NeuralNetwork.cpython-38.pyc
 NeuroEvo/Genome/__pycache__/NodeGene.cpython-38.pyc
 NeuroEvo/Genome/__pycache__/ConnectionGene.cpython-38.pyc
 NeuroEvo/__pycache__/Trainer.cpython-38.pyc
+*.pyc
+.idea/workspace.xml
+NeuroEvo/Optimizers/NEAT/__pycache__/NEATGenome.cpython-38.pyc
