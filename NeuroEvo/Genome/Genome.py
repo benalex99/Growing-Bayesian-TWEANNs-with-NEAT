@@ -36,3 +36,7 @@ class Genome:
     # Save a Genome to the disk
     def save(self):
         return
+
+    # Returns a pytorch neural network from the genome
+    def toNN(self):
+        return
