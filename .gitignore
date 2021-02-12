@@ -9,3 +9,5 @@ NeuroEvo/__pycache__/Trainer.cpython-38.pyc
 *.pyc
 .idea/workspace.xml
 NeuroEvo/Optimizers/NEAT/__pycache__/NEATGenome.cpython-38.pyc
+NeuroEvo/Optimizers/NEAT/__pycache__/NEATGenome.cpython-38.pyc
+NeuroEvo/Genome/__pycache__/Genome.cpython-38.pyc
