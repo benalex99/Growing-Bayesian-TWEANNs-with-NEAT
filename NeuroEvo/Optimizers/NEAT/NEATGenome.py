@@ -14,11 +14,17 @@ class NEATGenome(Genome.Genome):
 
     # Returns a random Index Number to get.
     def randomIndex(self, nodeArray) -> float:
-        return nodeArray[random.randint(0, len(nodeArray)-1)]
+        return nodeArray[random.randint(0, len(nodeArray)-1)].nodeNr
 
     # Mutate by adding an edge or node, or tweak a weight
     def mutate(self):
-        return
+        randomMutate = random.randint(0, 2)
+        if randomMutate == 0:
+            self.addEdge()
+        elif randomMutate == 1:
+            self.addNode()
+        else:
+            self.tweakWeight(0.1)
 
     # Add an edge to connect two nodes
     def addEdge(self):
@@ -35,5 +41,6 @@ class NEATGenome(Genome.Genome):
         return
 
     # Tweak a random weight by adding Gaussian noise
-    def tweakWeight(self):
-        return
+    def tweakWeight(self, weight):
+        indexWeight = random.randint(0, len(self.edges)-1)
+        self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, weight)
