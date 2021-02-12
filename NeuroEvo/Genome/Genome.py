@@ -51,8 +51,8 @@ class Genome:
                     layerNrs[edge.toNr] = self.nodes[edge.fromNr] + 1
                     maxLayer = max(maxLayer, layerNrs[edge.toNr])
         layers = np.array()
-        for layerNr in layerNrs:
-            layers.add
+        for i, layerNr in enumerate(layerNrs):
+            layers[layerNr].add(i)
         for edge in self.edges:
             weights[edge.fromNr][edge.toNr] = edge.weight
 
