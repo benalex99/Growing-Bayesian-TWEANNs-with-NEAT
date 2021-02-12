@@ -33,7 +33,7 @@ class Genome:
 
     # Load a Genome from the disk
     def load(self):
-        
+
         return
 
     # Save a Genome to the disk
