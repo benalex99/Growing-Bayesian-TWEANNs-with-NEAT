@@ -15,7 +15,7 @@ nn = NeuralNetwork(layers, False)
 
 print("go")
 
-gg = NEATGenome(5,2)
+gg = NEATGenome(5, 2)
 print("nodes")
 for i in range(0):
     gg.addNode()

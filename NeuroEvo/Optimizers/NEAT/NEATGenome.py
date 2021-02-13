@@ -3,7 +3,7 @@
 # Needs to implement a Genome base class.
 import numpy as np
 
-from Genome import Genome, NodeGene, ConnectionGene
+from NeuroEvo.Genome import Genome, NodeGene, ConnectionGene
 import random
 
 
@@ -27,8 +27,7 @@ class NEATGenome(Genome.Genome):
         fromI = random.randint(0, len(self.sendingNodes)-1)
         toI = random.randint(0, len(self.receivingNodes)-1)
 
-        while ((not (self.receivingNodes[toI].nodeNr >= self.inputSize
-                     and self.receivingNodes[toI].nodeNr < self.inputSize + self.outputSize))
+        while ((not (self.inputSize <= self.receivingNodes[toI].nodeNr < self.inputSize + self.outputSize))
                and self.receivingNodes[toI].nodeNr <= self.sendingNodes[fromI].nodeNr):
             fromI = random.randint(0, len(self.sendingNodes) - 1)
             toI = random.randint(0, len(self.receivingNodes)-1)
@@ -49,3 +48,13 @@ class NEATGenome(Genome.Genome):
     def tweakWeight(self, weight):
         indexWeight = random.randint(0, len(self.edges)-1)
         self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, weight)
+
+
+    # CAUTION: UNDER HEAVY DEVELOPMENT!
+    # Could not be the right way the start with! Just specifies HOW it could work at some places.
+    # Add the Edge to an adding Node
+    def specifiyEdge(self, edgeToSpecifiy, nodeToAppend):
+        nodesToManage = [sendingNode, receivingNode] = edgeToSpecifiy[0], edgeToSpecifiy[1]
+        for node in nodesToManage:
+            self.edges.append(ConnectionGene.EdgeGene(lambda x:node.nodeNr, nodeToAppend.nodeNr, ((random.random()*2)-1) if node.nodeNr < nodeToAppend.nodeNr else nodeToAppend.nodeNr, node.nodeNr,((random.random()*2)-1)))
+        np.delete(self.edges, np.where(self.edges, edgeToSpecifiy))
