@@ -10,7 +10,6 @@ class Layer(nn.Module):
         self.size_in, self.size_out = weights.size()[0], weights.size()[1]
         self.weights = nn.Parameter(weights)  # nn.Parameter is a Tensor that's a module parameter.
         self.bias = nn.Parameter(biases)
-        return
 
     @classmethod
     def randomly(self, size_in, size_out):
@@ -27,7 +26,6 @@ class Layer(nn.Module):
         nn.init.uniform_(self.bias, -bound, bound)  # bias init
 
         super(Layer, self).__init__(weights, bias)
-        return
 
     def forward(self, x):
         print(x)

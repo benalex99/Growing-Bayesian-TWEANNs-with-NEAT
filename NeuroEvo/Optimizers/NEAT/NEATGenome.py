@@ -9,12 +9,8 @@ import random
 
 class NEATGenome(Genome.Genome):
 
-    def __init__(self):
-        super(NEATGenome, self).__init__()
-
-    # Returns a random Index Number to get.
-    def randomIndex(self, nodeArray) -> float:
-        return nodeArray[random.randint(0, len(nodeArray)-1)].nodeNr
+    def __init__(self, inputSize, outputSize):
+        super(NEATGenome, self).__init__(inputSize, outputSize)
 
     # Mutate by adding an edge or node, or tweak a weight
     def mutate(self):
@@ -28,17 +24,26 @@ class NEATGenome(Genome.Genome):
 
     # Add an edge to connect two nodes
     def addEdge(self):
-        firstNodeToConnect = self.randomIndex(self.nodes)
-        secondNodeToConnect = self.randomIndex(self.nodes)
-        while secondNodeToConnect == firstNodeToConnect:
-            secondNodeToConnect = self.randomIndex(self.nodes)
-        self.edges.append(ConnectionGene.EdgeGene(firstNodeToConnect, secondNodeToConnect, ((random.random()*2)-1)))
+        fromI = random.randint(0, len(self.sendingNodes)-1)
+        toI = random.randint(0, len(self.receivingNodes)-1)
+
+        while ((not (self.receivingNodes[toI].nodeNr >= self.inputSize
+                     and self.receivingNodes[toI].nodeNr < self.inputSize + self.outputSize))
+               and self.receivingNodes[toI].nodeNr <= self.sendingNodes[fromI].nodeNr):
+            fromI = random.randint(0, len(self.sendingNodes) - 1)
+            toI = random.randint(0, len(self.receivingNodes)-1)
+
+        self.edges.append(ConnectionGene.EdgeGene(self.sendingNodes[fromI].nodeNr,
+                                                  self.receivingNodes[toI].nodeNr, ((random.random()*2)-1)))
 
     # Replace an edge by a node with the incoming edge having weight 1
     # and the outgoing edge having the original edges weight
     def addNode(self):
-        self.nodes.append(NodeGene.NodeGene(len(self.nodes)))
-        return
+        node = NodeGene.NodeGene(self.nodeCounter)
+        self.nodeCounter += 1
+        self.nodes.append(node)
+        self.sendingNodes.append(node)
+        self.receivingNodes.append(node)
 
     # Tweak a random weight by adding Gaussian noise
     def tweakWeight(self, weight):
