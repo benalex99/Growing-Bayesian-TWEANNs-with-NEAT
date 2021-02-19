@@ -73,6 +73,12 @@ class NEAT:
             else:
                 if genomeA.score < genomeB.score and valueA.hMarker <= hMarkerMaxB:
                     fittestGenome.edges.append(valueA)
+                    # Checks if the two Nodes from the appended Edge of Genome A exists in the Fittest Genome
+                    # If NOT, then append it to Nodes
+                    if not fittestGenome.nodes.__contains__(valueA.fromNr):
+                        fittestGenome.nodes.append(genomeA.nodes[np.where(genomeA.nodes, valueA.fromNr)])
+                    elif not fittestGenome.nodes.__contains__(valueA.toNr):
+                        fittestGenome.nodes.append(genomeA.nodes[np.where(genomeA.nodes, valueA.toNr)])
             hMarkerMaxA = max(hMarkerMaxA, valueA.hMarker)
 
         # Iterate through Genome B  and if its NOT the fittest Genome, append every Edge with an lower hMarker value
@@ -81,3 +87,9 @@ class NEAT:
             for valueB in genomeB.edges:
                 if valueB <= hMarkerMaxA:
                     fittestGenome.edges.append(valueB)
+                    # Checks if the two Nodes from the appended Edge of Genome B exists in the Fittest Genome
+                    # If NOT, then append it to Nodes
+                    if not fittestGenome.nodes.__contains__(valueB.fromNr):
+                        fittestGenome.nodes.append(genomeB.nodes[np.where(genomeB.nodes, valueB.fromNr)])
+                    elif not fittestGenome.nodes.__contains__(valueB.toNr):
+                        fittestGenome.nodes.append(genomeB.nodes[np.where(genomeB.nodes, valueB.toNr)])
