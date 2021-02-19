@@ -51,7 +51,11 @@ class NEAT:
     def merge(self, stGenome, ndGenome):
         genomeA = stGenome.copy()
         genomeB = ndGenome.copy()
-        fittestGenome = lambda x: genomeA if genomeA.score > genomeB.score else genomeB
+        if genomeA.score > genomeB.score:
+            fittestGenome = genomeA
+        else:
+            fittestGenome = genomeB
+        # fittestGenome = lambda x: genomeA if genomeA.score > genomeB.score else genomeB
         hMarkerMaxA = 0
         hMarkerMaxB = 0
 
