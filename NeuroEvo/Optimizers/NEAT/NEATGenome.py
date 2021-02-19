@@ -14,6 +14,10 @@ class NEATGenome(Genome.Genome):
 
     # Mutate by adding an edge or node, or tweak a weight
     def mutate(self):
+        if (len(self.edges) == 0):
+            self.addEdge()
+            return
+
         randomMutate = random.randint(0, 2)
         if randomMutate == 0:
             self.addEdge()

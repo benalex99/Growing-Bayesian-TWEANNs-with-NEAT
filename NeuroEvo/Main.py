@@ -14,16 +14,8 @@ nn = NeuralNetwork(layers, False)
 print("make genome \n")
 
 gg = NEATGenome(5, 2)
-#gg.edges.append(ConnectionGene.EdgeGene(0, 6, 1))
-#gg.edges.append(ConnectionGene.EdgeGene(1, 6, 1))
-#gg.edges.append(ConnectionGene.EdgeGene(2, 6, 1))
-gg.addNode()
-gg.edges.append(ConnectionGene.EdgeGene(0, 7, 1))
-gg.edges.append(ConnectionGene.EdgeGene(7, 6, 1))
-gg.edges.append(ConnectionGene.EdgeGene(0, 6, 1))
-
-#gg.addNode()
-gg.tweakWeight(0.1)
+for i in range(20):
+    gg.mutate()
 
 print("transform to pytorch nn \n")
 nn = gg.toNN()
