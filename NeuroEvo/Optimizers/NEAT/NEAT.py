@@ -4,19 +4,24 @@ class NEAT:
 
     population: list
 
-    def __init__(self, env):
+    def __init__(self, env, rootGenome, iterations, batchSize, maxPopSize):
         self.population = []
         self.env = env
         self.hMarker = 1
+        self.rootGenome = rootGenome
+        self.iterations = iterations
+        self.batchSize = batchSize
+        self.maxPopSize = maxPopSize
         return
 
-    def testRun(self, rootGenome, iterations, batchSize, maxPopSize):
+    def testRun(self):
 
-        self.population.append(rootGenome)
+        self.population.append(self.rootGenome)
         toBeTested = []
-        for iter in range(iterations):
+        for iter in range(self.iterations):
+            print("Iteration: " + str(iter))
             # Create a bunch of mutations
-            for i in range(batchSize):
+            for i in range(self.batchSize):
                 g = self.population[random.randint(0,len(self.population)-1)].copy()
                 self.hMarker = self.hMarker + g.mutate(self.hMarker)
                 toBeTested.append(g)
@@ -30,7 +35,7 @@ class NEAT:
             self.avgScore = self.avgScore / len(self.population)
 
             # Discard bad mutations from the population until the max population count is reached
-            while(len(self.population) > maxPopSize):
+            while(len(self.population) > self.maxPopSize):
                 i = random.randint(0,len(self.population) - 1)
                 if(self.population[i] < self.avgScore):
                     self.population.remove(i)
