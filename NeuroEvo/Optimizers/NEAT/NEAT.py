@@ -5,6 +5,7 @@ class NEAT:
     def __init__(self, env):
         self.population = []
         self.env = env
+        self.hMarker = 1
         return
 
     def run(self, rootGenome, iterations):
