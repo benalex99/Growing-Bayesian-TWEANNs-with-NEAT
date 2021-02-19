@@ -64,3 +64,9 @@ class NEATGenome(Genome.Genome):
         self.edges.append(ConnectionGene.EdgeGene(nodeToAppend.nodeNr, edgeToSpecifiy.toNr, edgeToSpecifiy.weight), (hMarker+1))
 
         edgeToSpecifiy.deactivate()
+
+    def copy(self):
+        return super().copy()
+
+    def toNN(self):
+        return super().toNN()

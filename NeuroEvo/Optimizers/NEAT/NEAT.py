@@ -1,23 +1,21 @@
 import random
+from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 import numpy as np
 
 
 class NEAT:
     population: list
 
-    def __init__(self, env, rootGenome, iterations, batchSize, maxPopSize):
+    def __init__(self, iterations, batchSize, maxPopSize):
         self.population = []
-        self.env = env
         self.hMarker = 1
-        self.rootGenome = rootGenome
         self.iterations = iterations
         self.batchSize = batchSize
         self.maxPopSize = maxPopSize
         return
 
-    def testRun(self):
-
-        self.population.append(self.rootGenome)
+    def run(self, rootGenome: NEATGenome, env):
+        self.population.append(rootGenome)
         toBeTested = []
         for iter in range(self.iterations):
             print("Iteration: " + str(iter))
@@ -28,7 +26,7 @@ class NEAT:
                 toBeTested.append(g)
 
             # Assign values to the mutations and add themto the population
-            self.env.test(toBeTested)
+            env.test(toBeTested)
             self.population = + toBeTested
             self.avgScore = 0
             for genome in self.population:
