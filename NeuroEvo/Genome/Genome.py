@@ -18,17 +18,21 @@ class Genome:
         self.nodeCounter = 0
 
         self.sendingNodes = []
+        self.inputNodes = []
         for i in range(inputSize):
             node = NodeGene(self.nodeCounter)
             self.sendingNodes.append(node)
             self.nodes.append(node)
+            self.inputNodes.append(node)
             self.nodeCounter += 1
 
         self.receivingNodes = []
+        self.outputNodes = []
         for i in range(outputSize):
             node = NodeGene(self.nodeCounter)
             self.receivingNodes.append(node)
             self.nodes.append(node)
+            self.outputNodes.append(node)
             self.nodeCounter += 1
 
     # Mutate by adding an edge or node, or tweak a weight
@@ -58,29 +62,32 @@ class Genome:
 
     # Returns a pytorch neural network from the genome
     def toNN(self):
-        layerNrs = np.zeros(len(self.nodes))
         maxLayer = 0
         # Determine the layers to which the nodes belong, based on the assumption that a connection is always
-        # towards the next layer
+        # towards a later layer
         notDone = True
         while(notDone):
             notDone = False
             for edge in self.edges:
-                if(layerNrs[edge.fromNr] >= layerNrs[edge.toNr]):
-                    notDone = True
-                    layerNrs[edge.toNr] = layerNrs[edge.fromNr] + 1
-                    maxLayer = max(maxLayer, layerNrs[edge.toNr])
-        print("allocated layers")
+                if(edge.enabled):
+                    if(self.nodes[edge.fromNr].layer >= self.nodes[edge.toNr].layer):
+                        notDone = True
+                        self.nodes[edge.toNr].layer = self.nodes[edge.fromNr].layer + 1
+                        maxLayer = max(maxLayer, self.nodes[edge.toNr].layer)
+
+        for node in self.outputNodes:
+            node.layer = maxLayer
+
         # Group nodes into lists belonging to their respective layer
         layerGroups = []
         for i in range(int(maxLayer)+1):
             group = []
-            for i2,layer in enumerate(layerNrs):
-                if(layer == i):
+            for i2,node in enumerate(self.nodes):
+                if(node.layer == i):
                     group.append(i2)
             layerGroups.append(group)
 
-        print("naise")
+        #print("naise")
 
         # Create matrices with weights from each layer to the layers after
         layers = []
@@ -92,15 +99,17 @@ class Genome:
                 outs = []
                 weights = []
                 for edge in self.edges:
-                    if (layerNrs[edge.fromNr] == fromI and layerNrs[edge.toNr] == toI):
-                        if not(layer.__contains__(edge.fromNr) and layerGroups[toI].__contains__(edge.toNr)):
-                            continue
-                        ins.append(layer.index(edge.fromNr))
-                        outs.append(layerGroups[toI].index(edge.toNr))
-                        weights.append(edge.weight)
+                    if(edge.enabled):
+                        if (self.nodes[edge.fromNr].layer == fromI and self.nodes[edge.toNr].layer == toI):
+                            if not(layer.__contains__(edge.fromNr) and layerGroups[toI].__contains__(edge.toNr)):
+                                continue
+                            ins.append(layer.index(edge.fromNr))
+                            outs.append(layerGroups[toI].index(edge.toNr))
+                            weights.append(edge.weight)
 
                 inOuts = torch.LongTensor([ins, outs])
                 weights = torch.FloatTensor(weights)
+                print(len(weights))
                 layerWeights.append(torch.sparse.FloatTensor(inOuts, weights, torch.Size([len(layer),
                                                                                           len(layerGroups[toI])])).to_dense().t())
                 layerBiases.append(torch.tensor(np.zeros(len(layerGroups[toI]))))
