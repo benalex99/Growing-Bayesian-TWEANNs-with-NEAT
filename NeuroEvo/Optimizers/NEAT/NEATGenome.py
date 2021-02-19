@@ -43,6 +43,7 @@ class NEATGenome(Genome.Genome):
         self.nodes.append(node)
         self.sendingNodes.append(node)
         self.receivingNodes.append(node)
+        self.specifiyEdge(self.edges[random.randint(0, len(self.edges)-1)], node)
 
     # Tweak a random weight by adding Gaussian noise
     def tweakWeight(self, weight):
