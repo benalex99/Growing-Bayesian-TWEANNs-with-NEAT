@@ -11,6 +11,7 @@ class NEATGenome(Genome.Genome):
 
     def __init__(self, inputSize, outputSize):
         super(NEATGenome, self).__init__(inputSize, outputSize)
+        self.fitness = 0
 
     # Mutate by adding an edge or node, or tweak a weight
     def mutate(self):
