@@ -1,5 +1,6 @@
 import numpy as np
 
+import NeuroEvo.Analysis.Analysis
 from NeuroEvo.Genome.NodeGene import NodeGene
 from NeuroEvo.NeuralNetwork import NeuralNetwork
 
@@ -109,7 +110,6 @@ class Genome:
 
                 inOuts = torch.LongTensor([ins, outs])
                 weights = torch.FloatTensor(weights)
-                print(len(weights))
                 layerWeights.append(torch.sparse.FloatTensor(inOuts, weights, torch.Size([len(layer),
                                                                                           len(layerGroups[toI])])).to_dense().t())
                 layerBiases.append(torch.tensor(np.zeros(len(layerGroups[toI]))))
@@ -117,3 +117,8 @@ class Genome:
 
         return NeuralNetwork(layers, True)
 
+    def visualize(self):
+        G = Analysis()
+        for edge in self.edges:
+            G.addEdge(edge.fromNr, edge.toNr)
+        G.visualize()

@@ -28,7 +28,5 @@ class Layer(nn.Module):
         super(Layer, self).__init__(weights, bias)
 
     def forward(self, x):
-        print(x)
-        print(self.weights.t())
         w_times_x = torch.matmul(x.float(), self.weights.t())
         return torch.add(w_times_x, self.bias) # w times x + b
