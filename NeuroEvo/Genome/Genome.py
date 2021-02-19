@@ -145,3 +145,24 @@ class Genome:
         outputNodes = []
         for node in self.sendingNodes:
             sendingNodes.append(node.copy())
+        for node in self.inputNodes:
+            inputNodes.append(node.copy())
+        for node in self.receivingNodes:
+            receivingNodes.append(node.copy())
+        for node in self.outputNodes:
+            outputNodes.append(node.copy())
+
+        edges = []
+        for edge in self.edges:
+            edges.append(edge.copy())
+        nodes = []
+        for node in self.nodes:
+            nodes.append(node.copy())
+
+        g.sendingNodes = sendingNodes
+        g.inputNodes = inputNodes
+        g.receivingNodes = receivingNodes
+        g.outputNodes = outputNodes
+        g.edges = edges
+
+        return g
