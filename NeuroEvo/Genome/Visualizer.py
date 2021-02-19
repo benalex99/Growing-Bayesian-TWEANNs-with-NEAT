@@ -5,29 +5,29 @@ import matplotlib.pyplot as plt
 
 
 # Defining a Class 
-class Analysis:
+class Visualizer:
 
     def __init__(self):
         # visual is a list which stores all
         # the set of edges that constitutes a 
         # graph 
-        self.visual = []
+        self.G = nx.DiGraph()
 
         # addEdge function inputs the vertices of an
 
     # edge and appends it to the visual list
     def addEdge(self, a, b):
-        temp = [a, b]
-        self.visual.append(temp)
+        self.G.add_edge(a,b)
 
-        # In visualize function G is an object of
+    def addNode(self, nodeNr, pos = (0,0)):
+        self.G.add_node(nodeNr, pos = pos)
 
+    # In visualize function G is an object of
     # class Graph given by networkx G.add_edges_from(visual)
     # creates a graph with a given list 
     # nx.draw_networkx(G) - plots the graph 
     # plt.show() - displays the graph 
     def visualize(self):
-        G = nx.Graph()
-        G.add_edges_from(self.visual)
-        nx.draw_networkx(G)
+        pos = nx.get_node_attributes(self.G, 'pos')
+        nx.draw(self.G, pos)
         plt.show() 

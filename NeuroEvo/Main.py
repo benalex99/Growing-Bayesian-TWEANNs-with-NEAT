@@ -14,15 +14,9 @@ nn = NeuralNetwork(layers, False)
 print("make genome")
 
 gg = NEATGenome(5, 2)
-for i in range(20):
+for i in range(10):
     gg.mutate()
-
+gg.visualize()
 print("transform to pytorch nn")
 nn = gg.toNN()
-gg.visualize()
 print("Output: " + str(nn.forward([1,2,3,4,5]).tolist()))
-
-writer = SummaryWriter('runs/fashion_mnist_experiment_1')
-
-writer.add_graph(nn)
-writer.close()

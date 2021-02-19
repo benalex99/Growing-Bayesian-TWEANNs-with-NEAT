@@ -1,6 +1,6 @@
 import numpy as np
 
-import NeuroEvo.Analysis.Analysis
+from NeuroEvo.Genome.Visualizer import Visualizer
 from NeuroEvo.Genome.NodeGene import NodeGene
 from NeuroEvo.NeuralNetwork import NeuralNetwork
 
@@ -63,30 +63,7 @@ class Genome:
 
     # Returns a pytorch neural network from the genome
     def toNN(self):
-        maxLayer = 0
-        # Determine the layers to which the nodes belong, based on the assumption that a connection is always
-        # towards a later layer
-        notDone = True
-        while(notDone):
-            notDone = False
-            for edge in self.edges:
-                if(edge.enabled):
-                    if(self.nodes[edge.fromNr].layer >= self.nodes[edge.toNr].layer):
-                        notDone = True
-                        self.nodes[edge.toNr].layer = self.nodes[edge.fromNr].layer + 1
-                        maxLayer = max(maxLayer, self.nodes[edge.toNr].layer)
-
-        for node in self.outputNodes:
-            node.layer = maxLayer
-
-        # Group nodes into lists belonging to their respective layer
-        layerGroups = []
-        for i in range(int(maxLayer)+1):
-            group = []
-            for i2,node in enumerate(self.nodes):
-                if(node.layer == i):
-                    group.append(i2)
-            layerGroups.append(group)
+        layerGroups = self.getLayers()
 
         #print("naise")
 
@@ -118,7 +95,53 @@ class Genome:
         return NeuralNetwork(layers, True)
 
     def visualize(self):
-        G = Analysis()
+        groups = self.getLayers()
+        G = Visualizer()
+        for y,layer in enumerate(groups):
+            for x, node in enumerate(layer):
+                G.addNode(node, pos = (y, -len(layer)/2 + x))
+
         for edge in self.edges:
-            G.addEdge(edge.fromNr, edge.toNr)
+            if(edge.enabled):
+                G.addEdge(edge.fromNr, edge.toNr)
         G.visualize()
+
+    def getLayers(self):
+        self.maxLayer = 0
+        # Determine the layers to which the nodes belong, based on the assumption that a connection is always
+        # towards a later layer
+        notDone = True
+        while (notDone):
+            notDone = False
+            for edge in self.edges:
+                if (edge.enabled):
+                    if (self.nodes[edge.fromNr].layer >= self.nodes[edge.toNr].layer):
+                        notDone = True
+                        self.nodes[edge.toNr].layer = self.nodes[edge.fromNr].layer + 1
+                        self.maxLayer = max(self.maxLayer, self.nodes[edge.toNr].layer)
+
+        for node in self.outputNodes:
+            node.layer = self.maxLayer
+
+        # Group nodes into lists belonging to their respective layer
+        layerGroups = []
+        for i in range(int(self.maxLayer) + 1):
+            group = []
+            for i2, node in enumerate(self.nodes):
+                if (node.layer == i):
+                    group.append(i2)
+            layerGroups.append(group)
+        return layerGroups
+
+    def copy(self):
+        g = Genome(0,0)
+        g.inputSize = self.inputSize
+        g.outputSize = self.outputSize
+        g.nodeCounter = self.nodeCounter
+
+        sendingNodes = []
+        inputNodes = []
+        receivingNodes = []
+        outputNodes = []
+        for node in self.sendingNodes:
+            sendingNodes.append(node.copy())
