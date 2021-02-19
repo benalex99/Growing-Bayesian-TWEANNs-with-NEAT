@@ -14,15 +14,15 @@ class NEATGenome(Genome.Genome):
         self.fitness = 0
 
     # Mutate by adding an edge or node, or tweak a weight
-    def mutate(self):
+    def mutate(self, hMarker):
         if (len(self.edges) == 0):
-            return self.addEdge()
+            return self.addEdge(hMarker)
 
         randomMutate = random.randint(0, 2)
         if randomMutate == 0:
-            return self.addEdge()
+            return self.addEdge(hMarker)
         elif randomMutate == 1:
-            return self.addNode()
+            return self.addNode(hMarker)
         else:
             return self.tweakWeight(0.1)
 
