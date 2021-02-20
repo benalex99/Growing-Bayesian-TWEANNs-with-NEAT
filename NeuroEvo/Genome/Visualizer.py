@@ -27,7 +27,15 @@ class Visualizer:
     # creates a graph with a given list 
     # nx.draw_networkx(G) - plots the graph 
     # plt.show() - displays the graph 
-    def visualize(self):
+    def visualize(self, ion= True):
+        plt.cla()
+        if(ion):
+            if (not plt.isinteractive()):
+                plt.ion()
+        else:
+            if (plt.isinteractive()):
+                plt.ioff()
         pos = nx.get_node_attributes(self.G, 'pos')
         nx.draw(self.G, pos)
-        plt.show() 
+        plt.show()
+        plt.pause(0.001)

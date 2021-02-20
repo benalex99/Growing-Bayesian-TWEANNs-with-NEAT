@@ -6,7 +6,7 @@ from NeuroEvo.NeuralNetwork import NeuralNetwork
 
 from NeuroEvo.NeuralNetwork.NeuralNetwork import NeuralNetwork
 import torch
-
+import copy
 
 # Stores the architecture of a neural network
 class Genome():
@@ -82,7 +82,7 @@ class Genome():
 
         return NeuralNetwork(layers, True)
 
-    def visualize(self):
+    def visualize(self, ion=True):
         groups = self.getLayers()
         G = Visualizer()
         for y,layer in enumerate(groups):
@@ -92,7 +92,7 @@ class Genome():
         for edge in self.edges:
             if(edge.enabled):
                 G.addEdge(edge.fromNr, edge.toNr)
-        G.visualize()
+        G.visualize(ion= ion)
 
     def getLayers(self):
         for node in self.nodes:
@@ -107,7 +107,6 @@ class Genome():
                 if (node.layer == i):
                     group.append(i2)
             layerGroups.append(group)
-        print(layerGroups)
         return layerGroups
 
     def copy(self):
@@ -116,14 +115,7 @@ class Genome():
         g.outputSize = self.outputSize
         g.maxLayer = self.maxLayer
 
-        edges = []
-        for edge in self.edges:
-            edges.append(edge.copy())
-        nodes = []
-        for node in self.nodes:
-            nodes.append(node.copy())
-
-        g.edges = edges
-        g.nodes = nodes
+        g.edges = copy.deepcopy(self.edges)
+        g.nodes = copy.deepcopy(self.nodes)
 
         return g

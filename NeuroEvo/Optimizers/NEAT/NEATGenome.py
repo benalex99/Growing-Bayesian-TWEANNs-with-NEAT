@@ -5,6 +5,7 @@ import numpy as np
 
 from NeuroEvo.Genome import Genome, NodeGene, ConnectionGene
 import random
+import copy
 
 
 class NEATGenome(Genome.Genome):
@@ -25,7 +26,7 @@ class NEATGenome(Genome.Genome):
             return 1
         elif randomMutate == 1:
             self.addNode(hMarker)
-            return 2
+            return 3
         else:
             self.tweakWeight(0.1)
             return 0
@@ -33,13 +34,17 @@ class NEATGenome(Genome.Genome):
 
 
     # Add an edge to connect two nodes
-    def addEdge(self, hMarker):
+    def addEdge(self, hMarker, outNode = None):
         fromI = random.randint(0, len(self.nodes) - 1)
         while(self.nodes[fromI].output):
             fromI = random.randint(0, len(self.nodes) - 1)
-        toI = random.randint(self.inputSize, len(self.nodes) - 1)
-        while(self.nodes[toI].input):
+
+        if(outNode == None):
             toI = random.randint(self.inputSize, len(self.nodes) - 1)
+            while(self.nodes[toI].input):
+                toI = random.randint(self.inputSize, len(self.nodes) - 1)
+        else:
+            toI = outNode.nodeNr
 
         maxTries = 1000
         while ( self.nodes[fromI].output
@@ -54,7 +59,7 @@ class NEATGenome(Genome.Genome):
 
             while (self.nodes[fromI].output):
                 fromI = random.randint(0, len(self.nodes) - 1)
-            while (self.nodes[toI].input):
+            while (self.nodes[toI].input and outNode == None):
                 toI = random.randint(self.inputSize, len(self.nodes) - 1)
 
         self.nodes[fromI].outputtingTo.append(toI)
@@ -65,9 +70,13 @@ class NEATGenome(Genome.Genome):
     # Replace an edge by a node with the incoming edge having weight 1
     # and the outgoing edge having the original edges weight
     def addNode(self, hMarker):
-        node = NodeGene.NodeGene(len(self.nodes))
+        node = NodeGene.NodeGene(nodeNr=len(self.nodes))
         self.nodes.append(node)
-        self.specifiyEdge(self.edges[random.randint(0, len(self.edges)-1)], node, hMarker)
+        edge = self.edges[random.randint(0, len(self.edges)-1)]
+        while(not edge.enabled):
+            edge = self.edges[random.randint(0, len(self.edges) - 1)]
+        self.specifiyEdge(edge, node, hMarker)
+        self.addEdge(hMarker + 2, outNode=node)
 
     # Tweak a random weight by adding Gaussian noise
     def tweakWeight(self, weight):
@@ -77,7 +86,6 @@ class NEATGenome(Genome.Genome):
     # Add the Edge to an adding Node
     def specifiyEdge(self, edge, newNode, hMarker):
         edge.deactivate()
-        print(edge.toNr)
         self.nodes[edge.fromNr].outputtingTo.remove(edge.toNr)
         self.nodes[edge.fromNr].outputtingTo.append(newNode.nodeNr)
 
@@ -90,8 +98,6 @@ class NEATGenome(Genome.Genome):
     def increaseLayers(self,fromNode, toNode):
         if(fromNode.layer >= toNode.layer):
             toNode.layer = fromNode.layer + 1
-            print(fromNode.nodeNr)
-            print("outputs: " + str(toNode.outputtingTo))
             for nodeNr in toNode.outputtingTo:
                 self.increaseLayers(toNode, self.nodes[nodeNr])
             self.maxLayer = max(toNode.layer, self.maxLayer)
@@ -102,15 +108,7 @@ class NEATGenome(Genome.Genome):
         g.outputSize = self.outputSize
         g.maxLayer = self.maxLayer
 
-        edges = []
-        for edge in self.edges:
-            edges.append(edge.copy())
-        nodes = []
-        for node in self.nodes:
-            nodes.append(node.copy())
-
-        g.edges = edges
-        g.nodes = nodes
+        g.edges = copy.deepcopy(self.edges)
+        g.nodes = copy.deepcopy(self.nodes)
         g.fitness = self.fitness
-
         return g

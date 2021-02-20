@@ -14,7 +14,7 @@ class EdgeGene:
     def deactivate(self):
         self.enabled = False
 
-    def copy(self):
+    def __deepcopy__(self, memodict={}):
         return EdgeGene(self.fromNr, self.toNr, self.weight, enabled = self.enabled, hMarker = self.hMarker)
 
     def __repr__(self):

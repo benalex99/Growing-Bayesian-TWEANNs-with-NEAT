@@ -2,7 +2,7 @@ import gym
 from gym.spaces import Box, Discrete
 
 import time
-
+import numpy as np
 
 
 class GymEnv:
@@ -17,7 +17,7 @@ class GymEnv:
             cumReward = 0
             done = False
 
-            for _ in range(200):
+            for _ in range(10000):
                 if(done):
                     break
                 nTime = time.time()
@@ -32,19 +32,16 @@ class GymEnv:
     def finalTest(self, genome):
         nn = genome.toNN()
         observation = self.env.reset()
-        done = False
-        for _ in range(1000):
+        for _ in range(1000000):
             self.env.render()
-            if(done):
-                break
             action = self.getAction(nn, observation)
             observation, reward, done, info = self.env.step(action)
 
     def inputs(self):
         if(isinstance(self.env.observation_space, Discrete)):
-            return self.env.observation_space.n
+            return self.env.observation_space.n + 1
         else:
-            return len(self.env.observation_space.high)
+            return len(self.env.observation_space.high) + 1
 
     def outputs(self):
         if (isinstance(self.env.action_space, Discrete)):
@@ -52,7 +49,8 @@ class GymEnv:
         else:
             return len(self.env.action_space.high)
 
-    def getAction(self, nn, observation):
+    def getAction(self, nn, obs):
+        observation = np.append(obs, [1])
         if(isinstance(self.env.action_space, Discrete)):
             outputs = nn.forward(observation)
             max = outputs[0]

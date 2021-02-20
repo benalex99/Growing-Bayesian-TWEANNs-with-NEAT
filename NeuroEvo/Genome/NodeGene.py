@@ -3,16 +3,21 @@
 # Creates a node with a nodeNr
 class NodeGene:
 
-    def __init__(self, nodeNr, layer = 0, output = False, input = False, outputtingTo = []):
+    def __init__(self, nodeNr, layer = 0, output = False, input = False, outputtingTo = None):
+        if outputtingTo is None:
+            outputtingTo = []
         self.nodeNr = nodeNr
         self.layer = layer
         self.output = output
         self.input = input
-        self.outputtingTo = outputtingTo
+        if(outputtingTo == None):
+            self.outputtingTo = []
+        else:
+            self.outputtingTo = outputtingTo
         return
 
-    def copy(self):
-        outputtingTo = []
-        for x in self.outputtingTo:
-            outputtingTo.append(x)
-        return NodeGene(self.nodeNr, self.layer, self.output, self.input, outputtingTo= outputtingTo)
+    def __deepcopy__(self, memodict={}):
+        return NodeGene(self.nodeNr, self.layer, self.output, self.input, outputtingTo= self.outputtingTo.copy())
+
+    def __repr__(self):
+        return "NodeNr: " + str(self.nodeNr) + " Layer: " + str(self.layer) + " Outputs to: " + str(self.outputtingTo) + "\n"

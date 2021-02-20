@@ -47,7 +47,7 @@ class NeuralNetwork(nn.Module):
 
     # Calculates the output of the given input
     def forward(self, x):
-        x = torch.tensor(x, dtype= torch.float).to(self.cuda)
+        x = torch.tensor(x, dtype= torch.float, device= self.cuda)
 
         if not self.allToAll:
             for layer in self.layers:
@@ -56,7 +56,7 @@ class NeuralNetwork(nn.Module):
         else:
             for output in self.outputs:
                 output.fill_(0)
-            self.outputs[0] = x.to(self.cuda)
+            self.outputs[0] = x
 
             for i, fromLayer in enumerate(self.fromToLayers):
                 for i2,toLayer in enumerate(fromLayer):

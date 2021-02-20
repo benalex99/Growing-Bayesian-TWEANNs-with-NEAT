@@ -40,14 +40,11 @@ class NEAT:
                 if (self.population[i].fitness <= self.median):
                     self.median = self.population[int(len(self.population)/2)].fitness
                     self.population.remove(self.population[i])
-            print("Took : " + str(time.time() - ntime))
-        # Get the best gene from the population
-        bestGene = self.population[0]
-        for genome in self.population:
-            if (genome.fitness > bestGene.fitness):
-                bestGene = genome
+            print("Took : " + str(time.time() - ntime) + "\n")
+            self.bestGene().visualize()
 
-        return bestGene
+        # Get the best gene from the population
+        return self.bestGene()
         # if(self.population)
 
     def merge(self, stGenome, ndGenome):
@@ -99,3 +96,10 @@ class NEAT:
                         fittestGenome.nodes.append(genomeB.nodes[np.where(genomeB.nodes, valueB.fromNr)])
                     elif not fittestGenome.nodes.__contains__(valueB.toNr):
                         fittestGenome.nodes.append(genomeB.nodes[np.where(genomeB.nodes, valueB.toNr)])
+
+    def bestGene(self):
+        bestGene = self.population[0]
+        for genome in self.population:
+            if (genome.fitness > bestGene.fitness):
+                bestGene = genome
+        return bestGene
