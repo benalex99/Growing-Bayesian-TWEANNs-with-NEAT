@@ -38,9 +38,12 @@ class NEATGenome(Genome.Genome):
         while(self.nodes[fromI].output):
             fromI = random.randint(0, len(self.nodes) - 1)
         toI = random.randint(self.inputSize, len(self.nodes) - 1)
+        while(self.nodes[toI].input):
+            toI = random.randint(self.inputSize, len(self.nodes) - 1)
 
         maxTries = 1000
-        while ( self.nodes[fromI].output or self.nodes[toI].input
+        while ( self.nodes[fromI].output
+                or self.nodes[toI].input
                 or self.nodes[fromI].outputtingTo.__contains__(toI)
                 or (self.nodes[toI].layer <= self.nodes[fromI].layer and not self.nodes[toI].output)
                 or toI == fromI):
@@ -51,7 +54,8 @@ class NEATGenome(Genome.Genome):
 
             while (self.nodes[fromI].output):
                 fromI = random.randint(0, len(self.nodes) - 1)
-            toI = random.randint(self.inputSize, len(self.nodes) - 1)
+            while (self.nodes[toI].input):
+                toI = random.randint(self.inputSize, len(self.nodes) - 1)
 
         self.nodes[fromI].outputtingTo.append(toI)
         self.edges.append(ConnectionGene.EdgeGene(fromI, toI, ((random.random()*2)-1), enabled= True, hMarker = hMarker))
@@ -86,6 +90,7 @@ class NEATGenome(Genome.Genome):
     def increaseLayers(self,fromNode, toNode):
         if(fromNode.layer >= toNode.layer):
             toNode.layer = fromNode.layer + 1
+            print(fromNode.nodeNr)
             print("outputs: " + str(toNode.outputtingTo))
             for nodeNr in toNode.outputtingTo:
                 self.increaseLayers(toNode, self.nodes[nodeNr])

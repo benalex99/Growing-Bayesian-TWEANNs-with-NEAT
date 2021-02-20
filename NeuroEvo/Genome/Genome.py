@@ -19,11 +19,11 @@ class Genome():
         self.maxLayer = 1
 
         for i in range(inputSize):
-            node = NodeGene(len(self.nodes), input = True)
+            node = NodeGene(len(self.nodes),layer = 0, input = True)
             self.nodes.append(node)
 
         for i in range(outputSize):
-            node = NodeGene(len(self.nodes), output= True)
+            node = NodeGene(len(self.nodes),layer = 1, output = True)
             self.nodes.append(node)
 
     # Mutate by adding an edge or node, or tweak a weight

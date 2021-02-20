@@ -24,7 +24,7 @@ class NEAT:
             toBeTested = []
             # Create a bunch of mutations
             for i in range(self.batchSize):
-                g: NEATGenome = self.population[random.randint(0, len(self.population) - 1)].copy()
+                g = self.population[random.randint(0, len(self.population) - 1)].copy()
                 self.hMarker = self.hMarker + g.mutate(self.hMarker)
                 avgSize += len(g.edges)
                 toBeTested.append(g)
