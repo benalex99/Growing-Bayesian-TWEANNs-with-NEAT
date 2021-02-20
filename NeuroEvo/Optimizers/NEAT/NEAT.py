@@ -1,7 +1,7 @@
 import random
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 import numpy as np
-
+import time
 
 class NEAT:
     population: list
@@ -16,28 +16,31 @@ class NEAT:
     def run(self, rootGenome: NEATGenome, env):
         self.hMarker = 1
         self.population.append(rootGenome)
-        toBeTested = []
+
         for iter in range(self.iterations):
             print("Iteration: " + str(iter))
+            ntime = time.time()
+            avgSize = 0
+            toBeTested = []
             # Create a bunch of mutations
             for i in range(self.batchSize):
                 g: NEATGenome = self.population[random.randint(0, len(self.population) - 1)].copy()
                 self.hMarker = self.hMarker + g.mutate(self.hMarker)
+                avgSize += len(g.edges)
                 toBeTested.append(g)
-
+            print("AvgSize : " + str(avgSize/len(toBeTested)))
             # Assign values to the mutations and add them to the population
             env.test(toBeTested)
             self.population = self.population + toBeTested
             self.population.sort(key= lambda x: x.fitness)
             self.median = self.population[int(len(self.population)/2)].fitness
-
             # Discard bad mutations from the population until the max population count is reached
             while (len(self.population) > self.maxPopSize):
                 i = random.randint(0, len(self.population) - 1)
                 if (self.population[i].fitness <= self.median):
                     self.median = self.population[int(len(self.population)/2)].fitness
                     self.population.remove(self.population[i])
-
+            print("Took : " + str(time.time() - ntime))
         # Get the best gene from the population
         bestGene = self.population[0]
         for genome in self.population:

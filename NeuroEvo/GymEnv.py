@@ -1,7 +1,7 @@
 import gym
 from gym.spaces import Box, Discrete
 
-
+import time
 
 
 
@@ -10,25 +10,33 @@ class GymEnv:
         self.env = gym.make(envName)
 
     def test(self, population):
+        cumTime = 0
         for genome in population:
             observation = self.env.reset()
             nn = genome.toNN()
             cumReward = 0
             done = False
-            for _ in range(1000):
+
+            for _ in range(200):
                 if(done):
                     break
+                nTime = time.time()
                 action = self.getAction(nn, observation)
+                cumTime += time.time() - nTime
                 observation, reward, done, info = self.env.step(action)
                 cumReward += reward
             genome.fitness = cumReward
+        print("Classifying took: " + str(cumTime))
 
 
     def finalTest(self, genome):
         nn = genome.toNN()
         observation = self.env.reset()
+        done = False
         for _ in range(1000):
             self.env.render()
+            if(done):
+                break
             action = self.getAction(nn, observation)
             observation, reward, done, info = self.env.step(action)
 

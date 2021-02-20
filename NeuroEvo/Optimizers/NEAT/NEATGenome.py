@@ -34,25 +34,35 @@ class NEATGenome(Genome.Genome):
 
     # Add an edge to connect two nodes
     def addEdge(self, hMarker):
-        fromI = random.randint(0, len(self.sendingNodes)-1)
-        toI = random.randint(0, len(self.receivingNodes)-1)
+        fromI = random.randint(0, len(self.nodes) - 1)
+        while(self.nodes[fromI].output):
+            fromI = random.randint(0, len(self.nodes) - 1)
+        toI = random.randint(self.inputSize, len(self.nodes) - 1)
 
-        while ((not (self.inputSize <= self.receivingNodes[toI].nodeNr < self.inputSize + self.outputSize))
-               and self.receivingNodes[toI].nodeNr <= self.sendingNodes[fromI].nodeNr):
-            fromI = random.randint(0, len(self.sendingNodes) - 1)
-            toI = random.randint(0, len(self.receivingNodes)-1)
+        maxTries = 1000
+        while ( self.nodes[fromI].output or self.nodes[toI].input
+                or self.nodes[fromI].outputtingTo.__contains__(toI)
+                or (self.nodes[toI].layer <= self.nodes[fromI].layer and not self.nodes[toI].output)
+                or toI == fromI):
 
-        self.edges.append(ConnectionGene.EdgeGene(self.sendingNodes[fromI].nodeNr,
-                                                  self.receivingNodes[toI].nodeNr, ((random.random()*2)-1), hMarker = hMarker))
+            if(maxTries == 0):
+                return
+            maxTries -= 1
+
+            while (self.nodes[fromI].output):
+                fromI = random.randint(0, len(self.nodes) - 1)
+            toI = random.randint(self.inputSize, len(self.nodes) - 1)
+
+        self.nodes[fromI].outputtingTo.append(toI)
+        self.edges.append(ConnectionGene.EdgeGene(fromI, toI, ((random.random()*2)-1), enabled= True, hMarker = hMarker))
+        self.increaseLayers(self.nodes[fromI], self.nodes[toI])
+
 
     # Replace an edge by a node with the incoming edge having weight 1
     # and the outgoing edge having the original edges weight
     def addNode(self, hMarker):
-        node = NodeGene.NodeGene(self.nodeCounter)
-        self.nodeCounter += 1
+        node = NodeGene.NodeGene(len(self.nodes))
         self.nodes.append(node)
-        self.sendingNodes.append(node)
-        self.receivingNodes.append(node)
         self.specifiyEdge(self.edges[random.randint(0, len(self.edges)-1)], node, hMarker)
 
     # Tweak a random weight by adding Gaussian noise
@@ -61,24 +71,31 @@ class NEATGenome(Genome.Genome):
         self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, weight)
 
     # Add the Edge to an adding Node
-    def specifiyEdge(self, edgeToSpecifiy, nodeToAppend, hMarker):
-        self.edges.append(ConnectionGene.EdgeGene(edgeToSpecifiy.fromNr, nodeToAppend.nodeNr, 1, hMarker = hMarker))
-        self.edges.append(ConnectionGene.EdgeGene(nodeToAppend.nodeNr, edgeToSpecifiy.toNr, edgeToSpecifiy.weight, hMarker = (hMarker+1)))
+    def specifiyEdge(self, edge, newNode, hMarker):
+        edge.deactivate()
+        print(edge.toNr)
+        self.nodes[edge.fromNr].outputtingTo.remove(edge.toNr)
+        self.nodes[edge.fromNr].outputtingTo.append(newNode.nodeNr)
 
-        edgeToSpecifiy.deactivate()
+        self.edges.append(ConnectionGene.EdgeGene(edge.fromNr, newNode.nodeNr, 1, enabled= True, hMarker = hMarker))
+        self.edges.append(ConnectionGene.EdgeGene(newNode.nodeNr, edge.toNr, edge.weight, enabled= True, hMarker= (hMarker + 1)))
+
+        newNode.outputtingTo.append(edge.toNr)
+        self.increaseLayers(self.nodes[edge.fromNr], newNode)
+
+    def increaseLayers(self,fromNode, toNode):
+        if(fromNode.layer >= toNode.layer):
+            toNode.layer = fromNode.layer + 1
+            print("outputs: " + str(toNode.outputtingTo))
+            for nodeNr in toNode.outputtingTo:
+                self.increaseLayers(toNode, self.nodes[nodeNr])
+            self.maxLayer = max(toNode.layer, self.maxLayer)
 
     def copy(self):
         g = NEATGenome(0, 0)
         g.inputSize = self.inputSize
         g.outputSize = self.outputSize
-        g.nodeCounter = self.nodeCounter
-
-        sendingNodes = []
-        receivingNodes = []
-        for node in self.sendingNodes:
-            sendingNodes.append(node.copy())
-        for node in self.receivingNodes:
-            receivingNodes.append(node.copy())
+        g.maxLayer = self.maxLayer
 
         edges = []
         for edge in self.edges:
@@ -87,8 +104,6 @@ class NEATGenome(Genome.Genome):
         for node in self.nodes:
             nodes.append(node.copy())
 
-        g.sendingNodes = sendingNodes
-        g.receivingNodes = receivingNodes
         g.edges = edges
         g.nodes = nodes
         g.fitness = self.fitness

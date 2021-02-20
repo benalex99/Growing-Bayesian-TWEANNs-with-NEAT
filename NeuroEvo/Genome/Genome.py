@@ -12,43 +12,35 @@ import torch
 class Genome():
 
     def __init__(self, inputSize, outputSize):
-        if(inputSize == 0 and outputSize == 0):
-            return
         self.inputSize = inputSize
         self.outputSize = outputSize
         self.edges = []
         self.nodes = []
-        self.nodeCounter = 0
+        self.maxLayer = 1
 
-        self.sendingNodes = []
         for i in range(inputSize):
-            node = NodeGene(self.nodeCounter)
-            self.sendingNodes.append(node)
+            node = NodeGene(len(self.nodes), input = True)
             self.nodes.append(node)
-            self.nodeCounter += 1
 
-        self.receivingNodes = []
         for i in range(outputSize):
-            node = NodeGene(self.nodeCounter, output= True)
-            self.receivingNodes.append(node)
+            node = NodeGene(len(self.nodes), output= True)
             self.nodes.append(node)
-            self.nodeCounter += 1
 
     # Mutate by adding an edge or node, or tweak a weight
-    def mutate(self, hMarker) -> int:
+    def mutate(self, hMarker):
         pass
 
     # Add an edge connection two nodes
-    def addEdge(self):
+    def addEdge(self, hMarker):
         pass
 
     # Replace an edge by a node with the incoming edge having weight 1
     # and the outgoing edge having the original edges weight
-    def addNode(self):
+    def addNode(self, hMarker):
         pass
 
     # Tweak a random weight by adding Gaussian noise
-    def tweakWeight(self):
+    def tweakWeight(self, weight):
         pass
 
     # Load a Genome from the disk
@@ -103,21 +95,6 @@ class Genome():
         G.visualize()
 
     def getLayers(self):
-        self.maxLayer = 1
-        # Determine the layers to which the nodes belong, based on the assumption that a connection is always
-        # towards a later layer
-        for node in self.nodes:
-            node.layer = 0;
-        notDone = True
-        while (notDone):
-            notDone = False
-            for edge in self.edges:
-                if (edge.enabled):
-                    if (self.nodes[edge.fromNr].layer >= self.nodes[edge.toNr].layer):
-                        notDone = True
-                        self.nodes[edge.toNr].layer = self.nodes[edge.fromNr].layer + 1
-                        self.maxLayer = max(self.maxLayer, self.nodes[edge.toNr].layer)
-
         for node in self.nodes:
             if node.output:
                 node.layer = self.maxLayer
@@ -130,20 +107,14 @@ class Genome():
                 if (node.layer == i):
                     group.append(i2)
             layerGroups.append(group)
+        print(layerGroups)
         return layerGroups
 
     def copy(self):
         g = Genome(0,0)
         g.inputSize = self.inputSize
         g.outputSize = self.outputSize
-        g.nodeCounter = self.nodeCounter
-
-        sendingNodes = []
-        receivingNodes = []
-        for node in self.sendingNodes:
-            sendingNodes.append(node.copy())
-        for node in self.receivingNodes:
-            receivingNodes.append(node.copy())
+        g.maxLayer = self.maxLayer
 
         edges = []
         for edge in self.edges:
@@ -152,8 +123,6 @@ class Genome():
         for node in self.nodes:
             nodes.append(node.copy())
 
-        g.sendingNodes = sendingNodes
-        g.receivingNodes = receivingNodes
         g.edges = edges
         g.nodes = nodes
 

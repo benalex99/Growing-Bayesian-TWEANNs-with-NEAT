@@ -5,7 +5,7 @@ import gym
 
 
 
-optim = NEAT(iterations= 8, batchSize= 50, maxPopSize= 50)
+optim = NEAT(iterations= 30, batchSize= 50, maxPopSize= 50)
 env = GymEnv('CartPole-v0')
 gg, score = Trainer.run(optim,env)
 

@@ -5,11 +5,11 @@ import numpy as np
 
 class Layer(nn.Module):
 
-    def __init__(self, weights = np.array([[]]), biases = []):
+    def __init__(self, device, weights = np.array([[]]), biases = []):
         super().__init__()
         self.size_in, self.size_out = weights.size()[0], weights.size()[1]
-        self.weights = nn.Parameter(weights)  # nn.Parameter is a Tensor that's a module parameter.
-        self.bias = nn.Parameter(biases)
+        self.weights = nn.Parameter(weights).to(device)  # nn.Parameter is a Tensor that's a module parameter.
+        self.bias = nn.Parameter(biases).to(device)
 
     @classmethod
     def randomly(self, size_in, size_out):
