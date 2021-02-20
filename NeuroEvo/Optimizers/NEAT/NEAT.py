@@ -54,7 +54,7 @@ class NEAT:
             fittestGenome = genomeA
         else:
             fittestGenome = genomeB
-        # fittestGenome = lambda x: genomeA if genomeA.fitness > genomeB.fitness else genomeB
+        # fittestGenome = lambda x: genomeA if genomeA.fitness > genomeB.fitness else genomeB   -> Just to looks nice
         hMarkerMaxA = 0
         hMarkerMaxB = 0
 
