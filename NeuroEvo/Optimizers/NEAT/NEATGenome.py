@@ -16,15 +16,20 @@ class NEATGenome(Genome.Genome):
     # Mutate by adding an edge or node, or tweak a weight
     def mutate(self, hMarker):
         if (len(self.edges) == 0):
-            return self.addEdge(hMarker)
+            self.addEdge(hMarker)
+            return 1
 
         randomMutate = random.randint(0, 2)
         if randomMutate == 0:
-            return self.addEdge(hMarker)
+            self.addEdge(hMarker)
+            return 1
         elif randomMutate == 1:
-            return self.addNode(hMarker)
+            self.addNode(hMarker)
+            return 2
         else:
-            return self.tweakWeight(0.1)
+            self.tweakWeight(0.1)
+            return 0
+
 
 
     # Add an edge to connect two nodes
@@ -38,8 +43,7 @@ class NEATGenome(Genome.Genome):
             toI = random.randint(0, len(self.receivingNodes)-1)
 
         self.edges.append(ConnectionGene.EdgeGene(self.sendingNodes[fromI].nodeNr,
-                                                  self.receivingNodes[toI].nodeNr, ((random.random()*2)-1)), hMarker)
-        return 1
+                                                  self.receivingNodes[toI].nodeNr, ((random.random()*2)-1), hMarker = hMarker))
 
     # Replace an edge by a node with the incoming edge having weight 1
     # and the outgoing edge having the original edges weight
@@ -50,23 +54,43 @@ class NEATGenome(Genome.Genome):
         self.sendingNodes.append(node)
         self.receivingNodes.append(node)
         self.specifiyEdge(self.edges[random.randint(0, len(self.edges)-1)], node, hMarker)
-        return 2
 
     # Tweak a random weight by adding Gaussian noise
     def tweakWeight(self, weight):
         indexWeight = random.randint(0, len(self.edges)-1)
         self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, weight)
-        return 0
 
     # Add the Edge to an adding Node
     def specifiyEdge(self, edgeToSpecifiy, nodeToAppend, hMarker):
-        self.edges.append(ConnectionGene.EdgeGene(edgeToSpecifiy.fromNr, nodeToAppend.nodeNr, 1), hMarker)
-        self.edges.append(ConnectionGene.EdgeGene(nodeToAppend.nodeNr, edgeToSpecifiy.toNr, edgeToSpecifiy.weight), (hMarker+1))
+        self.edges.append(ConnectionGene.EdgeGene(edgeToSpecifiy.fromNr, nodeToAppend.nodeNr, 1, hMarker = hMarker))
+        self.edges.append(ConnectionGene.EdgeGene(nodeToAppend.nodeNr, edgeToSpecifiy.toNr, edgeToSpecifiy.weight, hMarker = (hMarker+1)))
 
         edgeToSpecifiy.deactivate()
 
     def copy(self):
-        return super().copy()
+        g = NEATGenome(0, 0)
+        g.inputSize = self.inputSize
+        g.outputSize = self.outputSize
+        g.nodeCounter = self.nodeCounter
 
-    def toNN(self):
-        return super().toNN()
+        sendingNodes = []
+        receivingNodes = []
+        for node in self.sendingNodes:
+            sendingNodes.append(node.copy())
+        for node in self.receivingNodes:
+            receivingNodes.append(node.copy())
+
+        edges = []
+        for edge in self.edges:
+            edges.append(edge.copy())
+        nodes = []
+        for node in self.nodes:
+            nodes.append(node.copy())
+
+        g.sendingNodes = sendingNodes
+        g.receivingNodes = receivingNodes
+        g.edges = edges
+        g.nodes = nodes
+        g.fitness = self.fitness
+
+        return g

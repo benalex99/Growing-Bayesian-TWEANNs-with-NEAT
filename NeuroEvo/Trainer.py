@@ -9,18 +9,16 @@ class Trainer:
     @staticmethod
     def run(optimizer, env):
         nn = Trainer.train(optimizer, env)
-        score = Trainer.test(nn, env)
-        return nn, score
+        Trainer.test(nn, env)
+        return nn, nn.fitness
 
     # Train networks using the optimizer
     @staticmethod
     def train(optimizer, env):
-        env: GymEnv
         rootGenome = NEATGenome(env.inputs(), env.outputs())
         return optimizer.run(rootGenome, env)
 
     # Test networks, do some benchmarking
     @staticmethod
     def test(nn, env):
-        env: GymEnv
-        return env.test([nn])[0]
+        env.finalTest(nn)

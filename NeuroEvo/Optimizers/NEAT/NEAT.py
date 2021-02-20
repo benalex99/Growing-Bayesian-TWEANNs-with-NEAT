@@ -8,36 +8,35 @@ class NEAT:
 
     def __init__(self, iterations, batchSize, maxPopSize):
         self.population = []
-        self.hMarker = 1
         self.iterations = iterations
         self.batchSize = batchSize
         self.maxPopSize = maxPopSize
         return
 
     def run(self, rootGenome: NEATGenome, env):
+        self.hMarker = 1
         self.population.append(rootGenome)
         toBeTested = []
         for iter in range(self.iterations):
             print("Iteration: " + str(iter))
             # Create a bunch of mutations
             for i in range(self.batchSize):
-                g = self.population[random.randint(0, len(self.population) - 1)].copy()
+                g: NEATGenome = self.population[random.randint(0, len(self.population) - 1)].copy()
                 self.hMarker = self.hMarker + g.mutate(self.hMarker)
                 toBeTested.append(g)
 
-            # Assign values to the mutations and add themto the population
+            # Assign values to the mutations and add them to the population
             env.test(toBeTested)
-            self.population = + toBeTested
-            self.avgScore = 0
-            for genome in self.population:
-                self.avgScore += genome.fitness
-            self.avgScore = self.avgScore / len(self.population)
+            self.population = self.population + toBeTested
+            self.population.sort(key= lambda x: x.fitness)
+            self.median = self.population[int(len(self.population)/2)].fitness
 
             # Discard bad mutations from the population until the max population count is reached
             while (len(self.population) > self.maxPopSize):
                 i = random.randint(0, len(self.population) - 1)
-                if (self.population[i] < self.avgScore):
-                    self.population.remove(i)
+                if (self.population[i].fitness <= self.median):
+                    self.median = self.population[int(len(self.population)/2)].fitness
+                    self.population.remove(self.population[i])
 
         # Get the best gene from the population
         bestGene = self.population[0]

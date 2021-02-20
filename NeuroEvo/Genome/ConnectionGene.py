@@ -15,4 +15,7 @@ class EdgeGene:
         self.enabled = False
 
     def copy(self):
-        return EdgeGene(self.fromNr, self.toNr, self.weight, self.enabled, self.hMarker)
+        return EdgeGene(self.fromNr, self.toNr, self.weight, enabled = self.enabled, hMarker = self.hMarker)
+
+    def __repr__(self):
+        return str(self.fromNr) + " " + str(self.toNr) + " " + str(self.enabled)

@@ -9,9 +9,11 @@ import torch
 
 
 # Stores the architecture of a neural network
-class Genome:
+class Genome():
 
     def __init__(self, inputSize, outputSize):
+        if(inputSize == 0 and outputSize == 0):
+            return
         self.inputSize = inputSize
         self.outputSize = outputSize
         self.edges = []
@@ -19,25 +21,21 @@ class Genome:
         self.nodeCounter = 0
 
         self.sendingNodes = []
-        self.inputNodes = []
         for i in range(inputSize):
             node = NodeGene(self.nodeCounter)
             self.sendingNodes.append(node)
             self.nodes.append(node)
-            self.inputNodes.append(node)
             self.nodeCounter += 1
 
         self.receivingNodes = []
-        self.outputNodes = []
         for i in range(outputSize):
-            node = NodeGene(self.nodeCounter)
+            node = NodeGene(self.nodeCounter, output= True)
             self.receivingNodes.append(node)
             self.nodes.append(node)
-            self.outputNodes.append(node)
             self.nodeCounter += 1
 
     # Mutate by adding an edge or node, or tweak a weight
-    def mutate(self):
+    def mutate(self, hMarker) -> int:
         pass
 
     # Add an edge connection two nodes
@@ -64,8 +62,6 @@ class Genome:
     # Returns a pytorch neural network from the genome
     def toNN(self):
         layerGroups = self.getLayers()
-
-        #print("naise")
 
         # Create matrices with weights from each layer to the layers after
         layers = []
@@ -107,9 +103,11 @@ class Genome:
         G.visualize()
 
     def getLayers(self):
-        self.maxLayer = 0
+        self.maxLayer = 1
         # Determine the layers to which the nodes belong, based on the assumption that a connection is always
         # towards a later layer
+        for node in self.nodes:
+            node.layer = 0;
         notDone = True
         while (notDone):
             notDone = False
@@ -120,8 +118,9 @@ class Genome:
                         self.nodes[edge.toNr].layer = self.nodes[edge.fromNr].layer + 1
                         self.maxLayer = max(self.maxLayer, self.nodes[edge.toNr].layer)
 
-        for node in self.outputNodes:
-            node.layer = self.maxLayer
+        for node in self.nodes:
+            if node.output:
+                node.layer = self.maxLayer
 
         # Group nodes into lists belonging to their respective layer
         layerGroups = []
@@ -140,17 +139,11 @@ class Genome:
         g.nodeCounter = self.nodeCounter
 
         sendingNodes = []
-        inputNodes = []
         receivingNodes = []
-        outputNodes = []
         for node in self.sendingNodes:
             sendingNodes.append(node.copy())
-        for node in self.inputNodes:
-            inputNodes.append(node.copy())
         for node in self.receivingNodes:
             receivingNodes.append(node.copy())
-        for node in self.outputNodes:
-            outputNodes.append(node.copy())
 
         edges = []
         for edge in self.edges:
@@ -160,9 +153,8 @@ class Genome:
             nodes.append(node.copy())
 
         g.sendingNodes = sendingNodes
-        g.inputNodes = inputNodes
         g.receivingNodes = receivingNodes
-        g.outputNodes = outputNodes
         g.edges = edges
+        g.nodes = nodes
 
         return g
