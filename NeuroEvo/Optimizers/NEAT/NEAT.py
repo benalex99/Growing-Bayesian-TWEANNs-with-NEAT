@@ -50,11 +50,11 @@ class NEAT:
     def merge(self, stGenome, ndGenome):
         genomeA = stGenome.copy()
         genomeB = ndGenome.copy()
-        if genomeA.score > genomeB.score:
+        if genomeA.fitness > genomeB.fitness:
             fittestGenome = genomeA
         else:
             fittestGenome = genomeB
-        # fittestGenome = lambda x: genomeA if genomeA.score > genomeB.score else genomeB
+        # fittestGenome = lambda x: genomeA if genomeA.fitness > genomeB.fitness else genomeB
         hMarkerMaxA = 0
         hMarkerMaxB = 0
 
@@ -74,7 +74,7 @@ class NEAT:
                     fittestGenome.edges[np.where(fittestGenome.edges, valueA)] = genomeB.edges[
                         np.where(genomeB.edges, valueA)]
             else:
-                if genomeA.score < genomeB.score and valueA.hMarker <= hMarkerMaxB:
+                if genomeA.fitness < genomeB.fitness and valueA.hMarker <= hMarkerMaxB:
                     fittestGenome.edges.append(valueA)
                     # Checks if the two Nodes from the appended Edge of Genome A exists in the Fittest Genome
                     # If NOT, then append it to Nodes
@@ -86,7 +86,7 @@ class NEAT:
 
         # Iterate through Genome B  and if its NOT the fittest Genome, append every Edge with an lower hMarker value
         # then the hMarker Max Value from Genome A. The Excess get thrown away.
-        if genomeB.score < genomeA:
+        if genomeB.fitness < genomeA:
             for valueB in genomeB.edges:
                 if valueB <= hMarkerMaxA:
                     fittestGenome.edges.append(valueB)
