@@ -1,3 +1,5 @@
+import random
+
 import gym
 from gym.spaces import Box, Discrete
 
@@ -9,7 +11,7 @@ class GymEnv:
     def __init__(self, envName):
         self.env = gym.make(envName)
 
-    def test(self, population):
+    def test(self, population, duration):
         cumTime = 0
         for genome in population:
             observation = self.env.reset()
@@ -17,7 +19,7 @@ class GymEnv:
             cumReward = 0
             done = False
 
-            for _ in range(10000):
+            for _ in range(duration):
                 if(done):
                     break
                 nTime = time.time()
@@ -36,6 +38,8 @@ class GymEnv:
             self.env.render()
             action = self.getAction(nn, observation)
             observation, reward, done, info = self.env.step(action)
+            if (done):
+                break
 
     def inputs(self):
         if(isinstance(self.env.observation_space, Discrete)):
@@ -59,8 +63,25 @@ class GymEnv:
                 if (output > max):
                     max = output
                     action = i
+            if(max == 0):
+                return random.randint(0, len(outputs) - 1)
         else:
-            action = nn.forward(observation)
+            action = nn.forward(observation).detach().numpy()
 
         return action
 
+    def visualize(self, genome, duration, useDone = True):
+        print("in")
+        print(genome.edges)
+        nn = genome.toNN()
+        observation = self.env.reset()
+        cumReward = 0
+        for _ in range(duration):
+            self.env.render()
+            action = self.getAction(nn, observation)
+            observation, reward, done, info = self.env.step(action)
+            cumReward += reward
+            if (done and useDone):
+                break
+        print("out")
+        print(cumReward)

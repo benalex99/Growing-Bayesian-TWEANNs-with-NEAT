@@ -1,6 +1,8 @@
 
 # Decorator for the Genome class. Wraps around the Genome to give it a score, so it can be used in NEAT.
 # Needs to implement a Genome base class.
+import math
+
 import numpy as np
 
 from NeuroEvo.Genome import Genome, NodeGene, ConnectionGene
@@ -12,7 +14,7 @@ class NEATGenome(Genome.Genome):
 
     def __init__(self, inputSize, outputSize):
         super(NEATGenome, self).__init__(inputSize, outputSize)
-        self.fitness = 0
+        self.fitness = -math.inf
 
     # Mutate by adding an edge or node, or tweak a weight
     def mutate(self, hMarker):
@@ -28,7 +30,7 @@ class NEATGenome(Genome.Genome):
             self.addNode(hMarker)
             return 3
         else:
-            self.tweakWeight(0.1)
+            self.tweakWeight(1)
             return 0
 
 
@@ -76,7 +78,6 @@ class NEATGenome(Genome.Genome):
         while(not edge.enabled):
             edge = self.edges[random.randint(0, len(self.edges) - 1)]
         self.specifiyEdge(edge, node, hMarker)
-        self.addEdge(hMarker + 2, outNode=node)
 
     # Tweak a random weight by adding Gaussian noise
     def tweakWeight(self, weight):

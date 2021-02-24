@@ -2,7 +2,7 @@
 # along with matplotlib 
 import networkx as nx
 import matplotlib.pyplot as plt
-
+#import matplotlib.transforms.Bbox as Bbox
 
 # Defining a Class 
 class Visualizer:
@@ -10,11 +10,12 @@ class Visualizer:
     def __init__(self):
         # visual is a list which stores all
         # the set of edges that constitutes a 
-        # graph 
+        # graph
+        print("new")
         self.G = nx.DiGraph()
 
-        # addEdge function inputs the vertices of an
 
+    # addEdge function inputs the vertices of an
     # edge and appends it to the visual list
     def addEdge(self, a, b):
         self.G.add_edge(a,b)
@@ -28,6 +29,7 @@ class Visualizer:
     # nx.draw_networkx(G) - plots the graph 
     # plt.show() - displays the graph 
     def visualize(self, ion= True):
+        print("vis")
         plt.cla()
         if(ion):
             if (not plt.isinteractive()):
@@ -36,6 +38,8 @@ class Visualizer:
             if (plt.isinteractive()):
                 plt.ioff()
         pos = nx.get_node_attributes(self.G, 'pos')
+
         nx.draw(self.G, pos)
         plt.show()
         plt.pause(0.001)
+        print("done")
