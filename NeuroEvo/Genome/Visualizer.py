@@ -11,7 +11,6 @@ class Visualizer:
         # visual is a list which stores all
         # the set of edges that constitutes a 
         # graph
-        print("new")
         self.G = nx.DiGraph()
 
 
@@ -29,7 +28,6 @@ class Visualizer:
     # nx.draw_networkx(G) - plots the graph 
     # plt.show() - displays the graph 
     def visualize(self, ion= True):
-        print("vis")
         plt.cla()
         if(ion):
             if (not plt.isinteractive()):
@@ -42,4 +40,3 @@ class Visualizer:
         nx.draw(self.G, pos)
         plt.show()
         plt.pause(0.001)
-        print("done")

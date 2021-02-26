@@ -75,8 +75,9 @@ class Genome():
 
                 inOuts = torch.LongTensor([ins, outs])
                 weights = torch.FloatTensor(weights)
-                layerWeights.append(torch.sparse.FloatTensor(inOuts, weights, torch.Size([len(layer),
-                                                                                          len(layerGroups[toI])])).to_dense().t())
+                layerWeights.append(torch.sparse.FloatTensor(inOuts, weights,
+                                                        torch.Size([len(layer),
+                                                        len(layerGroups[toI])])).to_dense().t())
                 layerBiases.append(torch.tensor(np.zeros(len(layerGroups[toI]))))
             layers.append(list(zip(layerWeights, layerBiases)))
 
