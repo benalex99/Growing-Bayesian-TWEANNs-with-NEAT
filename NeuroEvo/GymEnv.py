@@ -11,9 +11,12 @@ class GymEnv:
     def __init__(self, envName):
         self.env = gym.make(envName)
 
-    def test(self, population, duration):
+    def test(self, population, duration, seed):
         cumTime = 0
+
         for genome in population:
+            self.env.seed(seed)
+            random.seed(seed)
             observation = self.env.reset()
             nn = genome.toNN()
             cumReward = 0
@@ -31,8 +34,10 @@ class GymEnv:
         print("Classifying took: " + str(cumTime))
 
 
-    def finalTest(self, genome):
+    def finalTest(self, genome, seed= 0):
         nn = genome.toNN()
+        self.env.seed(seed)
+        random.seed(seed)
         observation = self.env.reset()
         for _ in range(1000000):
             self.env.render()
@@ -70,10 +75,12 @@ class GymEnv:
 
         return action
 
-    def visualize(self, genome, duration, useDone = True):
-        print("in")
-        print(genome.edges)
+    def visualize(self, genome, duration, useDone = True, seed= 0):
         nn = genome.toNN()
+
+        self.env.seed(seed)
+        random.seed(seed)
+
         observation = self.env.reset()
         cumReward = 0
         for _ in range(duration):
@@ -83,5 +90,3 @@ class GymEnv:
             cumReward += reward
             if (done and useDone):
                 break
-        print("out")
-        print(cumReward)

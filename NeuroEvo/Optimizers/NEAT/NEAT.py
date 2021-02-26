@@ -15,10 +15,10 @@ class NEAT:
         self.showProgress = showProgress
         return
 
-    def run(self, rootGenome: NEATGenome, env):
+    def run(self, rootGenome: NEATGenome, env, seed= 0):
         self.hMarker = 1
         self.population.append(rootGenome)
-        self.visualize(rootGenome, env, 1000, useDone= False)
+        self.visualize(rootGenome, env, 500, useDone= False)
         for iter in range(self.iterations):
             print("Iteration: " + str(iter))
             ntime = time.time()
@@ -31,10 +31,12 @@ class NEAT:
                 avgSize += len(g.edges)
                 toBeTested.append(g)
             print("AvgSize : " + str(avgSize/len(toBeTested)))
+
             # Assign values to the mutations and add them to the population
-            env.test(toBeTested, self.episodeDur)
+            env.test(toBeTested, self.episodeDur, seed= iter)
             self.population = self.population + toBeTested
             self.population.sort(key=lambda x: x.fitness, reverse=True)
+
             # Discard bad mutations from the population until the max population count is reached
             while (len(self.population) > self.maxPopSize):
                 i = random.randint(max(0, int(len(self.population)/2 - 1)), len(self.population) - 1)
@@ -44,7 +46,7 @@ class NEAT:
             print("Median score: " + str(self.median))
             print("Best Score: " + str(self.bestGene().fitness) + "\n")
             if(self.showProgress[0] > 0 and iter % self.showProgress[0] == 0):
-                self.visualize(self.bestGene(),env, self.showProgress[1])
+                self.visualize(self.bestGene(),env, self.showProgress[1], seed= iter)
 
         # Get the best gene from the population
         return self.bestGene()
@@ -108,6 +110,6 @@ class NEAT:
                 bestGene = genome
         return bestGene
 
-    def visualize(self, gene, env, duration, useDone = True):
+    def visualize(self, gene, env, duration, useDone = True, seed = 0):
         gene.visualize()
-        env.visualize(gene, duration= duration, useDone = useDone)
+        env.visualize(gene, duration= duration, useDone = useDone, seed = seed)
