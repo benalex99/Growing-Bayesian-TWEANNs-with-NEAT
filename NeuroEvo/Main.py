@@ -15,6 +15,7 @@ env = GymEnv('CartPole-v0')
 # env = GymEnv('Pendulum-v0')
 # env = GymEnv('MountainCarContinuous-v0')
 
+print(env.outputs())
 gg, score = Trainer.run(optim,env)
 
 gg.visualize(ion= False)

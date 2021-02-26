@@ -15,7 +15,7 @@ class NEAT:
         self.showProgress = showProgress
         return
 
-    def run(self, rootGenome: NEATGenome, env, seed= 0):
+    def run(self,rootGenome, env, seed= 0):
         self.hMarker = 1
         self.population.append(rootGenome)
         self.visualize(rootGenome, env, 500, useDone= False)
@@ -24,12 +24,13 @@ class NEAT:
             ntime = time.time()
             avgSize = 0
             toBeTested = []
+
             # Create a bunch of mutations
             for i in range(self.batchSize):
-                g = self.population[random.randint(0, max(0, int(len(self.population)/2 - 1)))].copy()
-                self.hMarker = self.hMarker + g.mutate(self.hMarker)
+                g = self.newGenome()
                 avgSize += len(g.edges)
                 toBeTested.append(g)
+
             print("AvgSize : " + str(avgSize/len(toBeTested)))
 
             # Assign values to the mutations and add them to the population
@@ -57,15 +58,17 @@ class NEAT:
         weakestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness < secondGenome.fitness else secondGenome.copy()
 
         for index, value in enumerate(weakestGenome.edges):
-            if fittestGenome.edges[index].hMarker == value.hMarker:
+            if fittestGenome.edges[min(index, len(fittestGenome.edges)-1)].hMarker == value.hMarker:
                 if random.randint(0, 1) < 1:
                     fittestGenome.edges[index] = value
             elif firstGenome.fitness == secondGenome.fitness:
                 fittestGenome.edges.append(value)
-                if not fittestGenome.nodes.__contains__(value.fromNr):
-                    fittestGenome.nodes.append(value.fromNr)
-                elif not fittestGenome.nodes.__contains__(value.toNr):
-                    fittestGenome.nodes.append(value.toNr)
+                fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
+
+                if not(fittestGenome.nodes[min(value.toNr, len(fittestGenome.nodes)-1)].nodeNr == value.toNr):
+                    fittestGenome.nodes.insert(value.toNr, weakestGenome.nodes[value.toNr].__deepcopy__())
+
+                fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
         return fittestGenome
 
     def bestGene(self):
@@ -79,3 +82,16 @@ class NEAT:
     def visualize(self, gene, env, duration, useDone = True, seed = 0):
         gene.visualize()
         env.visualize(gene, duration= duration, useDone = useDone, seed = seed)
+
+    def newGenome(self):
+        if (random.randint(0, 1) < 1 or len(self.population) <= 1):
+            g = self.population[random.randint(0, max(0, int(len(self.population) / 2 - 1)))].copy()
+            self.hMarker = self.hMarker + g.mutate(self.hMarker)
+        else:
+            g1 = random.randint(0, max(0, int(len(self.population) / 2 - 1)))
+            g2 = random.randint(0, max(0, int(len(self.population) / 2 - 1)))
+            while (g1 == g2):
+                g2 = random.randint(0, max(0, int(len(self.population) / 2 - 1)))
+            g = self.merge(self.population[random.randint(0, max(0, int(len(self.population) / 2 - 1)))],
+                           self.population[random.randint(0, max(0, int(len(self.population) / 2 - 1)))])
+        return g

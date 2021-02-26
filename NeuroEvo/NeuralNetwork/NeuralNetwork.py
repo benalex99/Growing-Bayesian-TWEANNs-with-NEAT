@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from blitz.modules import BayesianLinear
 
 # Neural network class for running predictions on the GPU
 class NeuralNetwork(nn.Module):
@@ -31,6 +32,7 @@ class NeuralNetwork(nn.Module):
                 toLayers = []
                 for weights, biases in fromLayer:
                     linearL = nn.Linear(1, 1)
+                    # linearL = BayesianLinear(len(weights),len(weights[0]))
                     with torch.no_grad():
                         linearL.weight = torch.nn.Parameter(weights)
                         linearL.bias = torch.nn.Parameter(biases)

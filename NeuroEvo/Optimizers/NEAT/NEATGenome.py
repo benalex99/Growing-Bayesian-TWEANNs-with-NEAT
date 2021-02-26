@@ -33,8 +33,6 @@ class NEATGenome(Genome.Genome):
             self.tweakWeight(1)
             return 0
 
-
-
     # Add an edge to connect two nodes
     def addEdge(self, hMarker, outNode = None):
         fromI = random.randint(0, len(self.nodes) - 1)
@@ -67,7 +65,6 @@ class NEATGenome(Genome.Genome):
         self.nodes[fromI].outputtingTo.append(toI)
         self.edges.append(ConnectionGene.EdgeGene(fromI, toI, ((random.random()*2)-1), enabled= True, hMarker = hMarker))
         self.increaseLayers(self.nodes[fromI], self.nodes[toI])
-
 
     # Replace an edge by a node with the incoming edge having weight 1
     # and the outgoing edge having the original edges weight
