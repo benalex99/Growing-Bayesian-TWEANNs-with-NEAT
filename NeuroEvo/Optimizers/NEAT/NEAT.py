@@ -62,13 +62,17 @@ class NEAT:
                 if random.randint(0, 1) < 1:
                     fittestGenome.edges[index] = value
             elif firstGenome.fitness == secondGenome.fitness:
-                fittestGenome.edges.append(value)
-                fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
 
-                if not(fittestGenome.nodes[min(value.toNr, len(fittestGenome.nodes)-1)].nodeNr == value.toNr):
-                    fittestGenome.nodes.insert(value.toNr, weakestGenome.nodes[value.toNr].__deepcopy__())
+                if (not (fittestGenome.nodes[min(value.toNr, len(fittestGenome.nodes) - 1)].nodeNr == value.toNr)):
+                    if (fittestGenome.nodes[value.fromNr].layer >= weakestGenome.nodes[value.toNr].layer):
+                        fittestGenome.nodes.insert(value.toNr, weakestGenome.nodes[value.toNr].__deepcopy__())
 
-                fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
+                if(fittestGenome.nodes[value.fromNr].layer >= fittestGenome.nodes[value.toNr].layer):
+                    fittestGenome.edges.append(value)
+                    fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
+                    fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
+
+
         return fittestGenome
 
     def bestGene(self):
