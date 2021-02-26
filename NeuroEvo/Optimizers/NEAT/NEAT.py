@@ -52,55 +52,21 @@ class NEAT:
         return self.bestGene()
         # if(self.population)
 
-    def merge(self, stGenome, ndGenome):
-        genomeA = stGenome.copy()
-        genomeB = ndGenome.copy()
-        if genomeA.fitness > genomeB.fitness:
-            fittestGenome = genomeA
-        else:
-            fittestGenome = genomeB
-        # fittestGenome = lambda x: genomeA if genomeA.fitness > genomeB.fitness else genomeB   -> Just to looks nice
-        hMarkerMaxA = 0
-        hMarkerMaxB = 0
+    def merge(self, firstGenome: NEATGenome, secondGenome: NEATGenome):
+        fittestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness >= secondGenome.fitness else secondGenome.copy()
+        weakestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness < secondGenome.fitness else secondGenome.copy()
 
-        # Getting the max historical Marker of Genome B
-        for valueB in genomeB.edges:
-            hMarkerMaxB = max(hMarkerMaxB, valueB.hMarker)
-
-        # Iterate through Genome A and find hMarker Pairs to Genome B,
-        # then randomly choose between either Genome A or Genome B
-        # If the Genome A is NOT the Fittest Genome, append the Edges below the Max hMarker Value of Genome B
-        # and throw the excess away.
-        for valueA in genomeA.edges:
-            if genomeB.edges.__contains__(valueA.hMarker):
-                if random.randint(0, 1) == 0:
-                    fittestGenome.edges[np.where(fittestGenome.edges, valueA)] = valueA
-                else:
-                    fittestGenome.edges[np.where(fittestGenome.edges, valueA)] = genomeB.edges[
-                        np.where(genomeB.edges, valueA)]
-            else:
-                if genomeA.fitness < genomeB.fitness and valueA.hMarker <= hMarkerMaxB:
-                    fittestGenome.edges.append(valueA)
-                    # Checks if the two Nodes from the appended Edge of Genome A exists in the Fittest Genome
-                    # If NOT, then append it to Nodes
-                    if not fittestGenome.nodes.__contains__(valueA.fromNr):
-                        fittestGenome.nodes.append(genomeA.nodes[np.where(genomeA.nodes, valueA.fromNr)])
-                    elif not fittestGenome.nodes.__contains__(valueA.toNr):
-                        fittestGenome.nodes.append(genomeA.nodes[np.where(genomeA.nodes, valueA.toNr)])
-            hMarkerMaxA = max(hMarkerMaxA, valueA.hMarker)
-
-        # Iterate through Genome B  and if its NOT the fittest Genome, append every Edge with an lower hMarker value
-        # then the hMarker Max Value from Genome A. The Excess get thrown away.
-        if genomeB.fitness < genomeA:
-            for valueB in genomeB.edges:
-                if valueB <= hMarkerMaxA:
-                    fittestGenome.edges.append(valueB)
-                    # Checks if the two Nodes from the appended Edge of Genome B exists in the Fittest Genome
-                    # If NOT, then append it to Nodes
-                    if not fittestGenome.nodes.__contains__(valueB.fromNr):
-                        fittestGenome.nodes.append(genomeB.nodes[np.where(genomeB.nodes, valueB.fromNr)])
-                    elif not fittestGenome.nodes.__contains__(valueB.toNr):
-                        fittestGenome.nodes.append(genomeB.nodes[np.where(genomeB.nodes, valueB.toNr)])
+        for index, value in enumerate(weakestGenome.edges):
+            if fittestGenome.edges[index].hMarker == value.hMarker:
+                if random.randint(0, 1) < 1:
+                    fittestGenome.edges[index] = value
+            elif firstGenome.fitness == secondGenome.fitness:
+                fittestGenome.edges.append(value)
+                if not fittestGenome.nodes.__contains__(value.fromNr):
+                    fittestGenome.nodes.append(value.fromNr)
+                elif not fittestGenome.nodes.__contains__(value.toNr):
+                    fittestGenome.nodes.append(value.toNr)
+        return fittestGenome
 
     def bestGene(self):
         self.population.sort(key=lambda x: x.fitness, reverse=True)
