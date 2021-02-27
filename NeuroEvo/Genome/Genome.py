@@ -97,6 +97,10 @@ class Genome():
 
     def getLayers(self):
         for node in self.nodes:
+            if not node.input:
+                node.layer = max(node.layer, 1)
+
+        for node in self.nodes:
             if node.output:
                 node.layer = self.maxLayer
 

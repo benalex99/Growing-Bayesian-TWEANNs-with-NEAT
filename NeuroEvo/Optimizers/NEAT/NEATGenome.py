@@ -72,8 +72,10 @@ class NEATGenome(Genome.Genome):
         node = NodeGene.NodeGene(nodeNr=len(self.nodes))
         self.nodes.append(node)
         edge = self.edges[random.randint(0, len(self.edges)-1)]
-        while(not edge.enabled):
+        i = 0
+        while(not edge.enabled and i < 100):
             edge = self.edges[random.randint(0, len(self.edges) - 1)]
+            i = i + 1
         self.specifiyEdge(edge, node, hMarker)
 
     # Tweak a random weight by adding Gaussian noise
