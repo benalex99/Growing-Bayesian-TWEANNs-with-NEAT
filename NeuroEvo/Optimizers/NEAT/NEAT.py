@@ -72,7 +72,6 @@ class NEAT:
                     fittestGenome.edges.append(value)
                     fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
                     fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
-
         return fittestGenome
 
     def bestGene(self):
