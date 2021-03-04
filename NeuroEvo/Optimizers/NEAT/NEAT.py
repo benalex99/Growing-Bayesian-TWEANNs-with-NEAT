@@ -1,9 +1,8 @@
 import random
+import time
 
 from NeuroEvo.Genome.NodeGene import NodeGene
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
-import numpy as np
-import time
 
 
 class NEAT:
@@ -61,17 +60,17 @@ class NEAT:
         weakestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness < secondGenome.fitness else secondGenome.copy()
 
         for index, value in enumerate(weakestGenome.edges):
-            if index < len(fittestGenome.edges) and fittestGenome.edges[
-                min(index, len(fittestGenome.edges) - 1)].hMarker == value.hMarker:
+            if value.hMarker == fittestGenome.edges[min(index, len(fittestGenome.edges) - 1)].hMarker:
                 if random.randint(0, 1) < 1:
                     fittestGenome.edges[index] = value
-            elif firstGenome.fitness == secondGenome.fitness:
-                while (len(fittestGenome.nodes) <= value.toNr or len(fittestGenome.nodes) <= value.fromNr):
-                    fittestGenome.nodes.append(NodeGene(nodeNr=len(fittestGenome.nodes)))
-                if (fittestGenome.nodes[value.fromNr].layer <= fittestGenome.nodes[value.toNr].layer and (not fittestGenome.nodes[value.fromNr].outputtingTo.__contains__(value.toNr))):
-                    fittestGenome.edges.append(value)
-                    fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
-                    fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
+            else:
+                if firstGenome.fitness == secondGenome.fitness:
+                    while value.toNr >= len(fittestGenome.nodes) or value.fromNr >= len(fittestGenome.nodes): #TODO: think this through
+                        fittestGenome.nodes.append(NodeGene(nodeNr=len(fittestGenome.nodes)))
+                    if not fittestGenome.nodes[value.fromNr].outputtingTo.__contains__(value.toNr):
+                        fittestGenome.edges.append(value)
+                        fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
+                        fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
         return fittestGenome
 
     def bestGene(self):
