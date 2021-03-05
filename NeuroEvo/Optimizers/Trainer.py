@@ -1,4 +1,3 @@
-from NeuroEvo import GymEnv
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 
 
