@@ -67,7 +67,8 @@ class NEAT:
                 if firstGenome.fitness == secondGenome.fitness:
                     while value.toNr >= len(fittestGenome.nodes) or value.fromNr >= len(fittestGenome.nodes): #TODO: think this through
                         fittestGenome.nodes.append(NodeGene(nodeNr=len(fittestGenome.nodes)))
-                    if not fittestGenome.nodes[value.fromNr].outputtingTo.__contains__(value.toNr):
+                    if (fittestGenome.nodes[value.fromNr].layer <= fittestGenome.nodes[value.toNr].layer and
+                            (not fittestGenome.nodes[value.fromNr].outputtingTo.__contains__(value.toNr))):
                         fittestGenome.edges.append(value)
                         fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
                         fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])

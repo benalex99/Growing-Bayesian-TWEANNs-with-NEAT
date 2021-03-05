@@ -6,10 +6,10 @@ import matplotlib as plt
 import torch
 import Testing
 
-# optim = NEAT(iterations= 1000000000000, batchSize= 200, maxPopSize= 1, episodeDur= 400, showProgress= (1,1000))
-# # env = GymEnv('CartPole-v0')
-# # env = GymEnv('MountainCar-v0')
-# env = GymEnv('LunarLander-v2')
+optim = NEAT(iterations= 1000000000000, batchSize= 200, maxPopSize= 100, episodeDur= 400, showProgress= (1,1000))
+# env = GymEnv('CartPole-v0')
+# env = GymEnv('MountainCar-v0')
+env = GymEnv('LunarLander-v2')
 # # env = GymEnv('LunarLanderContinuous-v2')
 # # env = GymEnv('Acrobot-v1')
 # # env = GymEnv('Pendulum-v0')
@@ -18,9 +18,9 @@ import Testing
 # # env = GymEnv('Copy-v0')
 #
 # print(env.outputs())
-# gg, score = Trainer.run(optim,env)
+gg, score = Trainer.run(optim,env)
 #
-# gg.visualize(ion= False)
+gg.visualize(ion= False)
 # print(gg.nodes)
 # print(gg.edges)
-Testing.Testing.test()
+# Testing.Testing.test()
