@@ -1,8 +1,8 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from NeuroEvo.NeuralNetwork.Layer import Layer
-import numpy as np
+from NeuroEvo.NeuralNetwork.ProbabilisticNN.PLayer import PLayer
+
 
 # Neural network class for running predictions on the GPU
 class PNN(nn.Module):
@@ -20,13 +20,13 @@ class PNN(nn.Module):
 
             self.layers = []
             for weights, biases in layers:
-                self.layers.append(Layer(self.cuda, weights.t(), biases))
+                self.layers.append(PLayer(self.cuda, weights.t(), biases))
         else:
             self.fromToLayers = []
             for fromLayer in layers:
                 toLayers = []
                 for weights, biases in fromLayer:
-                    toLayers.append(Layer(self.cuda, weights, biases))
+                    toLayers.append(PLayer(self.cuda, weights, biases))
                 self.fromToLayers.append(toLayers)
 
             self.outputs = []
@@ -42,7 +42,7 @@ class PNN(nn.Module):
         hiddenLayerSizes.append(outputSize)
         layers = []
         for i in range(len(hiddenLayerSizes) - 1):
-            layers.append(Layer(hiddenLayerSizes[i], hiddenLayerSizes[i+1]))
+            layers.append(PLayer(hiddenLayerSizes[i], hiddenLayerSizes[i+1]))
         super(PNN, self).__init__(layers)
 
     # Calculates the output of the given input
