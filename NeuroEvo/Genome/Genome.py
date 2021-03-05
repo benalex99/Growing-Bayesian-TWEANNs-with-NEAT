@@ -86,6 +86,7 @@ class Genome():
     def visualize(self, ion=True):
         groups = self.getLayers()
         G = Visualizer()
+
         for y,layer in enumerate(groups):
             for x, node in enumerate(layer):
                 G.addNode(node, pos = (y, -len(layer)/2 + x))
@@ -93,6 +94,7 @@ class Genome():
         for edge in self.edges:
             if(edge.enabled):
                 G.addEdge(edge.fromNr, edge.toNr)
+
         G.visualize(ion= ion)
 
     def getLayers(self):
