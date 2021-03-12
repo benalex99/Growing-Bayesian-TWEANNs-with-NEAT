@@ -1,12 +1,8 @@
+from NeuroEvo.Environments.GymEnv import GymEnv
 from NeuroEvo.Optimizers.NEAT.NEAT import *
-from NeuroEvo.GymEnv import GymEnv
-from NeuroEvo.Trainer import Trainer
-import gym
-import matplotlib as plt
-import torch
-import Testing
+from NeuroEvo.Optimizers.Trainer import Trainer
 
-optim = NEAT(iterations= 1000000000000, batchSize= 200, maxPopSize= 100, episodeDur= 400, showProgress= (1,1000))
+optim = NEAT(iterations= 1000000000000, batchSize= 100, maxPopSize= 2, episodeDur= 400, showProgress= (1,1000))
 # env = GymEnv('CartPole-v0')
 # env = GymEnv('MountainCar-v0')
 env = GymEnv('LunarLander-v2')

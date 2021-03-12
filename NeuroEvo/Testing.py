@@ -1,9 +1,11 @@
+import random
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import random
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
+
 
 class Model(nn.Module):
     def __init__(self, D_in, H, D_out):

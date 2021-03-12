@@ -58,12 +58,14 @@ class NEAT:
     def merge(self, firstGenome: NEATGenome, secondGenome: NEATGenome):
         fittestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness >= secondGenome.fitness else secondGenome.copy()
         weakestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness < secondGenome.fitness else secondGenome.copy()
+        disjoint = False
 
         for index, value in enumerate(weakestGenome.edges):
-            if value.hMarker == fittestGenome.edges[min(index, len(fittestGenome.edges) - 1)].hMarker:
+            if value.hMarker == fittestGenome.edges[min(index, len(fittestGenome.edges) - 1)].hMarker and not disjoint:
                 if random.randint(0, 1) < 1:
                     fittestGenome.edges[index] = value
             else:
+                disjoint = True
                 if firstGenome.fitness == secondGenome.fitness:
                     while value.toNr >= len(fittestGenome.nodes) or value.fromNr >= len(fittestGenome.nodes): #TODO: think this through
                         fittestGenome.nodes.append(NodeGene(nodeNr=len(fittestGenome.nodes)))
