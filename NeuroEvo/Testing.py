@@ -11,7 +11,7 @@ class Model(nn.Module):
     def __init__(self, D_in, H, D_out):
         super(Model, self).__init__()
         self.lin2 = nn.Linear(D_in, H)
-        self.xor1 = XOR(H, H)
+        self.xor1 = nn.Linear(H,H)
         self.lin1 = nn.Linear(H, D_out)
 
     def forward(self, x):
@@ -59,39 +59,18 @@ class NonMaxUnlearn(nn.Module):
 
 class Envi():
     @staticmethod
-    def sample(n):
+    def sample(n, inputs):
         input = []
         output = []
         for i in range(0, n):
-            r = random.randint(0,8)
-            if r == 0:
-                input.append([0.0, 0.0, 0.0])
-                output.append([0.0])
-            elif r == 1:
-                input.append([1.0,0.0,0.0])
-                output.append([1.0])
-            elif r == 2:
-                input.append([0.0,1.0,0.0])
-                output.append([1.0])
-            elif r == 3:
-                input.append([1.0,1.0,0.0])
-                output.append([0.0])
-            elif r == 4:
-                input.append([0.0,1.0,1.0])
-                output.append([0.0])
-            elif r == 5:
-                input.append([1.0,0.0,1.0])
-                output.append([0.0])
-            elif r == 6:
-                input.append([0.0,1.0,1.0])
-                output.append([0.0])
-            elif r == 7:
-                input.append([0.0,0.0,1.0])
-                output.append([1.0])
-            else:
-                input.append([1.0,1.0,1.0])
-                output.append([0.0])
-
+            inp = []
+            sum = 0
+            for i2 in range(inputs):
+                r = random.randint(0,1)
+                sum += r
+                inp.append(r)
+            input.append(inp)
+            output.append([1] if (sum == 1) else [0])
 
         return torch.tensor(input).float(), torch.tensor(output).float()
 
@@ -106,7 +85,7 @@ class Testing:
         # Create random Tensors to hold inputs and outputs
         #x = torch.randn(N, D_in)
         #y = torch.randn(N, D_out)
-        x, y = Envi.sample(N)
+        x, y = Envi.sample(N,3)
 
         # Construct our model by instantiating the class defined above
         model = Model(D_in, H, D_out)
@@ -120,7 +99,7 @@ class Testing:
         sqSum = 0
         weights = []
         grads = []
-        iter = 50000
+        iter = 5000
         print("Weight: " + str(model.lin1.weight.detach().numpy()) )
         for t in range(iter):
             # # Forward pass: Compute predicted y by passing x to the model
@@ -186,9 +165,6 @@ class Testing:
         # print(weights[:,0,0])
         grads = np.array(grads)
         fig, ax = plt.subplots(len(weights),1)
-        # ax[0] = plt.hist(weights[0,0], bins = 200)
-        # ax[1] = plt.hist(weights[1,0], bins = 200)
-        # ax[2] = plt.hist(weights[2,0], bins = 200)
 
         for i, w in enumerate(weights):
             ax[i].plot(w)

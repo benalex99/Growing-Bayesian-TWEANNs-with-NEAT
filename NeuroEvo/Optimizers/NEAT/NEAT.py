@@ -91,7 +91,7 @@ class NEAT:
     def newGenome(self):
         if (random.randint(0, 1) < 1 or len(self.population) <= 3):
             g = self.population[random.randint(0, max(0, int(len(self.population) / 2 - 1)))].copy()
-            self.hMarker = self.hMarker + g.mutate(self.hMarker)
+            self.hMarker += g.mutate(self.hMarker)
         else:
             g1 = random.randint(0, max(0, int(len(self.population) / 2 - 1)))
             g2 = random.randint(0, max(0, int(len(self.population) / 2 - 1)))
