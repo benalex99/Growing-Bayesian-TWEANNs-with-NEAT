@@ -10,6 +10,7 @@ class NEAT:
 
     def __init__(self, iterations, batchSize, maxPopSize, episodeDur, showProgress=(0, 0)):
         self.population = []
+        self.species = []
         self.iterations = iterations
         self.batchSize = batchSize
         self.maxPopSize = maxPopSize
@@ -67,14 +68,18 @@ class NEAT:
             else:
                 disjoint = True
                 if firstGenome.fitness == secondGenome.fitness:
-                    while value.toNr >= len(fittestGenome.nodes) or value.fromNr >= len(fittestGenome.nodes): #TODO: think this through
+                    while value.toNr >= len(fittestGenome.nodes) or value.fromNr >= len(fittestGenome.nodes):
                         fittestGenome.nodes.append(NodeGene(nodeNr=len(fittestGenome.nodes)))
                     if (fittestGenome.nodes[value.fromNr].layer <= fittestGenome.nodes[value.toNr].layer and
                             (not fittestGenome.nodes[value.fromNr].outputtingTo.__contains__(value.toNr))):
                         fittestGenome.edges.append(value)
                         fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
                         fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
+
+        
         return fittestGenome
+
+
 
     def bestGene(self):
         self.population.sort(key=lambda x: x.fitness, reverse=True)
