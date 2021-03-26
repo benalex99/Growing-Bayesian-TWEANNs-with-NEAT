@@ -2,6 +2,8 @@ from Optimizers.NEAT.NEAT import NEAT
 from Optimizers.Trainer import Trainer
 from Environments.GymEnv import GymEnv
 from Optimizers.QLearner.QLearner import QPolicy
+from Testing import Testing
+from NeuralNetwork.AbsoluteGrad.Linear import AbsGradTest
 import gym
 from Environments.Classification import BayesianClassification
 import torch
@@ -34,4 +36,4 @@ def BayesStuff():
     for _ in range(10):
         print(dwbnn([0]))
 
-BayesStuff()
+Testing.test()
