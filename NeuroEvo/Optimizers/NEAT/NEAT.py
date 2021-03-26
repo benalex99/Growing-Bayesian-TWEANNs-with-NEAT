@@ -76,10 +76,62 @@ class NEAT:
                         fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
                         fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
 
-        
         return fittestGenome
 
+    def speciation(self, population, excessImp, disjointImp, weightImp):
+        compareGenome = population[0]
+        self.species.append([[], compareGenome])
 
+        # The compare Genome to specify if the Genome should be in the same Species or create a new Species
+        for index, genome in enumerate(population):
+            factorN = 1
+            if not (genome == compareGenome):
+                # Checks if both Genomes have more then 20 Genes and set the nFactor to the length
+                # of the Genome with more genes, if both are under 20 the nFactor is 1
+                if len(compareGenome.edges) > 20 or len(genome.edges) > 20:
+                    if len(compareGenome.edges) > len(genome.edges):
+                        factorN = len(compareGenome.edges)
+                    else:
+                        factorN = len(genome.edges)
+
+#TODO: Delta in Liste einfügen, Genome mit allen Spezien repräsentanten vergleichen, in niederdrigstes Delta rein WENN < x (2)
+                # Splits or Combine Genomes into Species
+                for indexSpecies, species in enumerate(self.species):
+                    compareGenome = species[0]
+                    # Defines the number of Excess and Disjoint Genes and the average Weight difference
+                    excessGenes, disjointGenes, avgWeight = self.getExcessAndDisjoint(genome, compareGenome)
+                    if self.deltaValue(excessImp, disjointImp, weightImp, excessGenes, disjointGenes, avgWeight, factorN) < 2:
+                        species.append(genome)
+                    else:
+                        self.species.append([genome])
+
+    def deltaValue(self, excessImp, disjointImp, weightImp, excessGenes, disjointGenes, avgWeight, factorN):
+        return (((excessImp * excessGenes) / factorN)
+                    + ((disjointImp * disjointGenes) / factorN)
+                    + (weightImp * avgWeight))
+
+    def getExcessAndDisjoint(self, firstGenome, secondGenome):
+        disjointGenes, excessGenes, avgWeight = 0
+
+        for index, edge in enumerate(secondGenome.edges):
+            if not firstGenome.edges[min(index, len(firstGenome.edges) - 1)].hMarker == edge.hMarker:
+                if edge.hMarker <= firstGenome.edges[len(firstGenome.edges - 1)].hMarker:
+                    disjointGenes += 1
+                else:
+                    excessGenes += 1
+            else:
+                # Defines the average Weight of matching Gene
+                avgWeight += abs(edge.weight - firstGenome.edges[index].weight)
+                if not firstGenome.edges[min(index + 1, len(firstGenome.edges) - 1)].hMarker \
+                       == edge.hMarker:
+                    avgWeight = avgWeight / (index + 1)
+        for indexEdges, edge in enumerate(firstGenome.edges):
+            if not edge.hMarker == secondGenome.edges[min(indexEdges, len(secondGenome.edges) - 1)].hMarker:
+                if edge.hMarker <= secondGenome.edges[len(secondGenome.edges - 1)].hMarker:
+                    disjointGenes += 1
+                else:
+                    excessGenes += 1
+        return excessGenes, disjointGenes, avgWeight
 
     def bestGene(self):
         self.population.sort(key=lambda x: x.fitness, reverse=True)
@@ -89,9 +141,11 @@ class NEAT:
                 bestGene = genome
         return bestGene
 
+
     def visualize(self, gene, env, duration, useDone=True, seed=0):
         gene.visualize()
         env.visualize(gene, duration=duration, useDone=useDone, seed=seed)
+
 
     def newGenome(self):
         if (random.randint(0, 1) < 1 or len(self.population) <= 3):
@@ -104,4 +158,5 @@ class NEAT:
                 g2 = random.randint(0, max(0, int(len(self.population) / 2 - 1)))
             g = self.merge(self.population[g1],
                            self.population[g2])
+            self.speciation(self.population, 0, 0, 0)
         return g
