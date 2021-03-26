@@ -31,7 +31,7 @@ class QPolicy():
             self.env[i].seed(seed)
         self.testEnv = gym.make(env)
 
-        self.input, self.output = len(self.env[0].observation_space.high) ,self.env[0].action_space.n
+        self.input, self.output = len(self.env[0].observation_space.high), self.env[0].action_space.n
         self.model = Model([(self.input, 1000),(1000,1000),(1000,500),(500,500),(500,500),(500,self.output)], device="cuda")
         self.seed = seed
         self.random = random
@@ -51,11 +51,11 @@ class QPolicy():
         for i in range(iter):
 
             # Simulate new experience
-            observationBatches, actionsBatches, rewardsBatches, actionValuesBatches = self.episode()
+            observations, actions, rewards, actionValues = self.episode()
             # Store experience
-            self.manageExpBuffer(observationBatches, actionsBatches, rewardsBatches, actionValuesBatches)
+            # self.manageExpBuffer(observationBatches, actionsBatches, rewardsBatches, actionValuesBatches)
             # Sample experience for learning
-            observations, actions, rewards, actionValues = self.sampleBuffer(self.sampleSize)
+            # observations, actions, rewards, actionValues = self.sampleBuffer(self.sampleSize)
             # Update the experience with current policy knowledge
             observations, actionValues = self.updateExperience(observations, actions, rewards, actionValues)
             # Train neural network with updated experiences
@@ -105,7 +105,10 @@ class QPolicy():
             actionVals.append(actionValuesBatch)
 
         print("steps :" + str(steps))
-        return observations, actions, rewards, actionVals
+        return np.array(observations).reshape((-1, self.input)), \
+               np.array(actions).flatten(), \
+               np.array(rewards).flatten(), \
+               np.array(actionVals).reshape((-1, self.output))
 
     # Return a random action
     def explore(self, obsBatch):
@@ -148,8 +151,9 @@ class QPolicy():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            avgLoss += loss.detach().item()
-        print("Loss :" + str(avgLoss/(iter)))
+            lastloss= loss.detach().item()
+            avgLoss += lastloss
+        print("Loss :" + str(lastloss))
 
     def test(self):
 
@@ -181,11 +185,6 @@ class QPolicy():
         return observations, actionValues
 
     def manageExpBuffer(self, observationBatches, actionBatches, rewardBatches, actionValueBatches):
-        observations = np.array(observationBatches).reshape((-1, self.input))
-        actions = np.array(actionBatches).flatten()
-        rewards = np.array(rewardBatches).flatten()
-        actionValues = np.array(actionValueBatches).reshape((-1, self.output))
-
         for observations, actions, rewards, actionValues in zip(observations, actions, rewards, actionValues):
             self.expBuffer.append([observations, actions, rewards, actionValues])
         while(len(self.expBuffer) > self.expBufferSize):

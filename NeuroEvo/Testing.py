@@ -3,107 +3,75 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-
-
-class Model(nn.Module):
-    def __init__(self, D_in, H, D_out):
-        super(Model, self).__init__()
-        self.lin2 = nn.Linear(D_in, H)
-        self.xor1 = nn.Linear(H,H)
-        self.lin1 = nn.Linear(H, D_out)
-
-    def forward(self, x):
-        # x = self.lin1(x)
-        # print("x1: " + str(x))
-        x = self.xor1(x)
-        # print("x2: " + str(x))
-        return torch.sigmoid(self.lin1(x))
-
-class XOR(nn.Module):
-    def __init__(self, D_in, D_out):
-        super(XOR, self).__init__()
-        self.lin1 = nn.Linear(D_in, D_out)
-        weights = []
-        for inp in range(D_in):
-            w = np.ones(D_out, dtype= float) * -1
-            w[inp] = 1
-            weights.append(w)
-        with torch.no_grad():
-            self.lin1.weight = nn.Parameter(torch.tensor(weights, dtype= torch.float))
-        self.lin1.requires_grad_(False)
-
-        self.weight = self.lin1.weight
-
-    def forward(self, x):
-        return F.relu(self.lin1(x))
-
-class NonMaxUnlearn(nn.Module):
-    def __init__(self, D_in, D_out):
-        super(NonMaxUnlearn, self).__init__()
-        self.xor = XOR(D_in, D_out)
-
-    def forward(self, x):
-        output, _ = torch.max(torch.abs(x), 1)
-
-        maxes, _ = torch.max(self.xor(x), 1)
-        mins, _ = torch.min(self.xor(x), 1)
-
-        maxSigns = torch.sign(maxes)
-        minSigns = torch.sign(mins)
-
-        signs = maxSigns.int() | minSigns.int()
-        result = output * signs
-        return torch.reshape(result, (len(result),1))
-
-class Envi():
-    @staticmethod
-    def sample(n, inputs):
-        input = []
-        output = []
-        for i in range(0, n):
-            inp = []
-            sum = 0
-            for i2 in range(inputs):
-                r = random.randint(0,1)
-                sum += r
-                inp.append(r)
-            input.append(inp)
-            output.append([1] if (sum == 1) else [0])
-
-        return torch.tensor(input).float(), torch.tensor(output).float()
+import NeuralNetwork.AbsoluteGrad.Linear as Linear
+from CustomEnvs import Envi
+from NeuralNetwork.ExpandingEnsemble.Ensemble import Ensemble
 
 class Testing:
     @staticmethod
-    def test():
+    def testWithAnalytic():
         random.seed(0)
         # N is batch size; D_in is input dimension;
         # H is hidden dimension; D_out is output dimension.
-        N, D_in, H, D_out = 64, 3, 3, 1
+        N, D_in, H, D_out = 64, 2, 3, 1
 
         # Create random Tensors to hold inputs and outputs
         #x = torch.randn(N, D_in)
         #y = torch.randn(N, D_out)
-        x, y = Envi.sample(N,3)
+        xData, yData = Envi.XOR(N,2,1)
 
         # Construct our model by instantiating the class defined above
-        model = Model(D_in, H, D_out)
+        model = Linear.GrowingLinear(D_in, D_out)
 
         # Construct our loss function and an Optimizer. The call to model.parameters()
         # in the SGD constructor will contain the learnable parameters of the two
         # nn.Linear modules which are members of the model.
         criterion = torch.nn.BCELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.02)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         gradSum = 0
         sqSum = 0
-        weights = []
+        weights1 = []
+        weights2 = []
         grads = []
-        iter = 5000
-        print("Weight: " + str(model.lin1.weight.detach().numpy()) )
+        iter = 10000
+        testIter = 20
+
         for t in range(iter):
             # # Forward pass: Compute predicted y by passing x to the model
+            y_pred = model(xData)
+            y_pred = F.sigmoid(y_pred)
+            # print("Input: " + str(x[0]) + " Output: " + str(y_pred[0].item()))
+            # print(model.lin1.weight)
+            # print(model.lin2.weight)
+
+            # Compute and print loss
+            loss = criterion(y_pred, yData)
+            # print(loss)
+            if t % 100 == 99:
+                print("Iteration: " + str(t) + " Loss: " + str(loss.item()))
+
+            # Zero gradients, perform a backward pass, and update the weights.
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            gradSum += model.linHidden.weight.detach().numpy().copy()
+            sqSum += pow(model.linHidden.weight.detach().numpy().copy(), 2)
+
+            weights1.append(model.linIn.weight.detach().numpy().copy())
+            weights2.append(model.linHidden.weight.detach().numpy().copy())
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+        xData, yData = Envi.XOR(N,2,2)
+        for t in range(testIter):
+
+            # # Forward pass: Compute predicted y by passing x to the model
+            index = np.random.randint(0,len(xData))
+            x = xData[t]
+            y = yData[t]
+
             y_pred = model(x)
+            y_pred = F.sigmoid(y_pred)
             # print("Input: " + str(x[0]) + " Output: " + str(y_pred[0].item()))
             # print(model.lin1.weight)
             # print(model.lin2.weight)
@@ -118,54 +86,56 @@ class Testing:
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            gradSum += model.lin1.weight.detach().numpy().copy()
-            sqSum += pow(model.lin1.weight.detach().numpy().copy(), 2)
-            weights.append(model.lin1.weight.detach().numpy().copy())
-            # grads.append(model.lin1.weight.grad.detach().numpy().copy())
 
-        weights.append(model.lin1.weight.detach().numpy().copy())
-        print("GradSum: " + str(gradSum))
-        print("sqSum: " + str(sqSum))
+            gradSum += model.linHidden.weight.detach().numpy().copy()
+            sqSum += pow(model.linHidden.weight.detach().numpy().copy(), 2)
 
-        gradMean = gradSum / iter
-        stDev = np.sqrt((sqSum / iter) - np.square(gradMean))
+            weights1.append(model.linIn.weight.detach().numpy().copy())
+            weights2.append(model.linHidden.weight.detach().numpy().copy())
+        weights1.append(model.linIn.weight.detach().numpy().copy())
+        weights2.append(model.linHidden.weight.detach().numpy().copy())
+        iter +=testIter
+        print([0,0], round(model(torch.tensor([0,0]).float()).item()) == 0)
+        print([0,1], round(model(torch.tensor([0,1]).float()).item()) == 1)
+        print([1,0], round(model(torch.tensor([1,0]).float()).item()) == 1)
+        print([1,1], round(model(torch.tensor([1,1]).float()).item()) == 0)
 
-        print("Mean: " + str(gradMean))
-        print("stDev: " + str(stDev))
+        weights1 = np.array(weights1).reshape((-1, iter+1))
+        weights2 = np.array(weights2).reshape((-1, iter+1))
 
-        print("Weight: " + str(model.lin1.weight.detach().numpy()) )
-
-        # Converged
-        # Mean: [[-12.73863818  11.72467281]
-        #  [-11.89546613  12.26476286]]
-        # stDev: [[0.8903341  0.85618427]
-        #  [1.10187019 1.10423262]]
-
-        # Not Converged
-        # Mean: [[ -5.1842766 -12.79832  ]
-        #  [  7.3667736 -13.064345 ]]
-        # stDev: [[0.54236597 2.2329712 ]
-        #  [0.49488503 2.2005575 ]]
-
-        # Not Converged 1 node
-        # Mean: [[-14.340984 -14.080064]]
-        # stDev: [[2.0686867 2.0696084]]
-
-        print(round(model(torch.tensor([0,0,0]).float()).item()) == 0)
-        print(round(model(torch.tensor([0,1,0]).float()).item()) == 1)
-        print(round(model(torch.tensor([1,1,0]).float()).item()) == 0)
-        print(round(model(torch.tensor([0,0,1]).float()).item()) == 1)
-        print(round(model(torch.tensor([1,0,0]).float()).item()) == 1)
-        print(round(model(torch.tensor([0,1,1]).float()).item()) == 0)
-        print(round(model(torch.tensor([1,0,1]).float()).item()) == 0)
-        print(round(model(torch.tensor([1,1,1]).float()).item()) == 0)
-
-        print("Weight: " + str(model.lin1.weight.detach().numpy()) )
-        weights = np.array(weights).reshape((3, iter+1))
-        # print(weights[:,0,0])
         grads = np.array(grads)
-        fig, ax = plt.subplots(len(weights),1)
 
-        for i, w in enumerate(weights):
-            ax[i].plot(w)
+        fig, ax = plt.subplots(len(weights1) + len(weights2), 2)
+
+        weights1 = weights1[:,len(weights1[0])-20:]
+        weights2 = weights2[:,len(weights2[0])-20:]
+
+        xValues = range(0,len(weights1[0]))
+
+        ax[0,0].set_title("L1")
+        for i, w in enumerate(weights1):
+            ax[i, 0].plot(xValues, w)
+            ax[i, 0].plot(xValues, w, "bo")
+            ax[i, 0].set_ylabel("w" + str(i))
+
+        ax[0,1].set_title("L2")
+        for i, w in enumerate(weights2):
+            ax[i, 1].plot(xValues, w)
+            ax[i, 1].plot(xValues, w, "bo")
+            ax[i, 1].set_ylabel("w" + str(i))
+
         plt.show()
+
+    @staticmethod
+    def test():
+        D_in, D_out, H = 2, 1, 2
+        xData, yData = Envi.XOR(500, D_in)
+
+        model = Ensemble(D_in, D_out, H)
+
+        model.Train(xData, yData)
+
+        print("Average Loss: " + str((yData - model(xData)).abs().mean().item()))
+        print("Module count: " + str(len(model.nns)))
+        model.info()
+
