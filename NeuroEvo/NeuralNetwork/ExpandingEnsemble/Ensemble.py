@@ -1,13 +1,15 @@
 import torch
 import torch.nn as nn
 import copy
+from NeuroEvo.NeuralNetwork.UnclassifiedExperiments.SomeLayerModels import XOR as XOR
+import math
 
 class DeepRelu(nn.Module):
     def __init__(self, D_in, H, D_out):
         super(DeepRelu, self).__init__()
         self.lin1 = nn.Linear(D_in, H)
-        self.lin2 = nn.Linear(H,H)
-        self.lin3 = nn.Linear(H,H)
+        self.lin2 = nn.Linear(H, H)
+        self.lin3 = nn.Linear(H, H)
         self.lin4 = nn.Linear(H, D_out)
 
     def forward(self, x):
@@ -42,10 +44,30 @@ class EnsembleModule(nn.Module):
         super(EnsembleModule, self).__init__()
         self.model = model
         self.dataPointsLearned = 0
-        self.lifeForce = 1
 
     def forward(self, x):
         return self.model(x)
+
+    def Train(self, x, y, criterion, optimizer, iter=100):
+        optimizer = optimizer(self.parameters(), lr=0.01)
+
+        y_pred = self(x)
+        loss = criterion(y_pred, y)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        totalLoss = loss.abs().sum()
+
+        for _ in range(iter):
+            y_pred = self(x)
+            loss = criterion(y_pred, y)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            totalLoss += loss.abs().sum()
+
+        return totalLoss
+
 # We discard old hypothesis that havent been used.
 # If we have too much change to our current hypothesis, we may create a separate hypothesis to explain away the new data.
 # We may not actually fully think through how we would have to change to adapt our old hypothesis to fit the new datapoint.
@@ -55,16 +77,18 @@ class EnsembleModule(nn.Module):
 # and compare the outcomes on the same inputs for the new and old hypothesis. Based on the improvement or
 # worsening we can then choose to adopt this changed hypothesis, or to create a separate one.
 class Ensemble(nn.Module):
-    def __init__(self, D_in, D_out, H = 10, shrinkingFactor = 0.5, growthThreshold = 0.1):
+    def __init__(self, D_in, D_out, H = 10, murderPercentage = 0.001, growthThreshold = 40, expertPercentage = 0.6):
         super(Ensemble, self).__init__()
         self.D_in = D_in
         self.H = H
         self.D_out = D_out
-        self.shrinkingFactor = shrinkingFactor
+        self.murderPercentage = murderPercentage
         self.growthThreshold = growthThreshold
+        self.expertPercentage = expertPercentage
         self.nns = []
         self.moduleType = ShallowRelu
         self.nns.append(EnsembleModule(self.moduleType(D_in, H, D_out)))
+        self.totalDataPoints = 1
 
     def forward(self, x):
         output = torch.zeros(len(x), self.D_out)
@@ -86,55 +110,38 @@ class Ensemble(nn.Module):
             for module in self.nns:
                 moduleCopy = copy.deepcopy(module)
                 moduleCopies.append(moduleCopy)
-                totalGradients.append(self.TrainModule(moduleCopy, x, y, criterion, optimizer, iter = 1) * moduleCopy.dataPointsLearned)
+                totalGradients.append(moduleCopy.Train(x, y, criterion, optimizer, iter = 1)
+                                      * moduleCopy.dataPointsLearned)
 
             # Update the module with the least total loss
             # Use model probability/age and model accuracy?
             # Gradient will grow with amount of data points... good or bad? Normalize back down? But its sensible scaling.
-            bestIndex = totalGradients.index(min(totalGradients))
+            for _ in range(max(1, round(len(self.nns)*self.expertPercentage))):
+                bestIndex = totalGradients.index(min(totalGradients))
 
-            if(totalGradients[bestIndex] < self.growthThreshold):
-                self.nns[bestIndex] = moduleCopies[bestIndex]
-                self.TrainModule(self.nns[bestIndex], x, y, criterion, optimizer, iter = 99)
-                self.nns[bestIndex].dataPointsLearned += 1
-                self.nns[bestIndex].lifeForce += 1
-            else:
-                newModule = EnsembleModule(self.moduleType(self.D_in, self.H, self.D_out))
-                self.nns.append(newModule)
-                self.TrainModule(newModule.model, x, y, criterion, optimizer)
-                newModule.dataPointsLearned += 1
-                print("Expanded")
+                if(totalGradients[bestIndex] < self.growthThreshold):
+                    self.nns[bestIndex] = moduleCopies[bestIndex]
+                    self.nns[bestIndex].Train(x, y, criterion, optimizer, iter = 99)
+                    self.nns[bestIndex].dataPointsLearned += 1
+                    self.totalDataPoints += 1
+                else:
+                    newModule = EnsembleModule(self.moduleType(self.D_in, self.H, self.D_out))
+                    self.nns.append(newModule)
+                    newModule.Train(x, y, criterion, optimizer)
+                    newModule.dataPointsLearned += 1
+                    print("Expanded")
+                    break
+                totalGradients[bestIndex] = math.inf
+
 
             self.filter()
 
             print(str(i) + "th datapoint")
 
-
-    def TrainModule(self, module, x, y, criterion, optimizer, iter=100):
-        optimizer = optimizer(module.parameters(), lr=0.001)
-
-        y_pred = module(x)
-        loss = criterion(y_pred, y)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        totalLoss = loss.abs().sum()
-
-        for _ in range(iter):
-            y_pred = module(x)
-            loss = criterion(y_pred, y)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            totalLoss += loss.abs().sum()
-
-        return totalLoss
-
     def filter(self):
         aList = []
         for module in self.nns:
-            module.lifeForce -= (1/len(self.nns))*self.shrinkingFactor
-            if(module.lifeForce > 0):
+            if(module.dataPointsLearned / self.totalDataPoints > self.murderPercentage):
                 aList.append(module)
             else:
                 print("Murder")
@@ -142,8 +149,15 @@ class Ensemble(nn.Module):
 
     def info(self):
         for module in self.nns:
-            print("Weights: " + str(module.dataPointsLearned) + ", Lifeforce: " + str(module.lifeForce))
-        print([0,0], self(torch.tensor([[0,0]]).float()).item() - 0)
-        print([0,1], self(torch.tensor([[0,1]]).float()).item() - 1)
-        print([1,0], self(torch.tensor([[1,0]]).float()).item() - 1)
-        print([1,1], self(torch.tensor([[1,1]]).float()).item() - 0)
+            print("Weights: " + str(module.dataPointsLearned))
+            print(module.model.lin1.weight.data)
+            print(module.model.lin1.bias.data)
+            print(module.model.lin2.weight.data)
+            print(module.model.lin2.bias.data)
+        print([0,0], self(torch.tensor([[0,0]]).float()).item())
+        print([0,1], self(torch.tensor([[0,1]]).float()).item())
+        print([1,0], self(torch.tensor([[1,0]]).float()).item())
+        print([1,1], self(torch.tensor([[1,1]]).float()).item())
+
+
+    #Simply assigning the datapoint to the network with the least error does not produce any generalized network,

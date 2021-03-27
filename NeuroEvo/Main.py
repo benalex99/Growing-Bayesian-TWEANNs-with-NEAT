@@ -2,7 +2,10 @@ from Optimizers.NEAT.NEAT import NEAT
 from Optimizers.Trainer import Trainer
 from Environments.GymEnv import GymEnv
 from Optimizers.QLearner.QLearner import QPolicy
+from Genome.Genome import Genome
+from Optimizers.NEAT.NEATGenome import NEATGenome
 from Testing import Testing
+import time
 from NeuralNetwork.AbsoluteGrad.Linear import AbsGradTest
 import gym
 from Environments.Classification import BayesianClassification
@@ -36,4 +39,14 @@ def BayesStuff():
     for _ in range(10):
         print(dwbnn([0]))
 
-Testing.test()
+def nnToGenome():
+    genome = NEATGenome(5,1)
+    for i in range(5):
+        genome.mutate(i)
+    genome.visualize()
+    nn = genome.toNN()
+    genome.fromNN(nn)
+    time.sleep(1000)
+
+nnToGenome()
+#Testing.test()

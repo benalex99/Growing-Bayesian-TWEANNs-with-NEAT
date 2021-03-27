@@ -54,7 +54,7 @@ class Genome():
     # Returns a pytorch neural network from the genome
     def toNN(self):
         layerGroups = self.getLayers()
-
+        self.edgeLocations = []
         # Create matrices with weights from each layer to the layers after
         layers = []
         for fromI, layer in enumerate(layerGroups):
@@ -82,6 +82,25 @@ class Genome():
             layers.append(list(zip(layerWeights, layerBiases)))
 
         return NeuralNetwork(layers, True)
+
+    def fromNN(self, nn):
+        nodes = []
+        layers = nn.fromToLayers
+
+        # Add the first layers inputsize as input neurons
+        for _ in range(layers[0][0].weight.shape[1]):
+            node = NodeGene(len(nodes),layer = 0, input = True)
+            nodes.append(node)
+        print("Layer 0")
+        print(len(nodes))
+        for i, toLayer in enumerate(layers[0]):
+            node = NodeGene(len(nodes),layer = i, input = False, output = i == len(layers[0]) - 1)
+            nodes.append(node)
+            print("Layer " + str(i))
+            print(toLayer.weight)
+            print(toLayer.weight.shape[0])
+        for node in nodes:
+            print(node)
 
     def visualize(self, ion=True):
         groups = self.getLayers()

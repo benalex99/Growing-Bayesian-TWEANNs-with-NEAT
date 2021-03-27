@@ -128,8 +128,9 @@ class Testing:
 
     @staticmethod
     def test():
-        D_in, D_out, H = 2, 1, 2
-        xData, yData = Envi.XOR(500, D_in)
+        D_in, D_out, H = 10, 5, 10
+        xData, yData = Envi.objectClasses(D_out, D_in, 1000)
+
 
         model = Ensemble(D_in, D_out, H)
 
@@ -137,5 +138,4 @@ class Testing:
 
         print("Average Loss: " + str((yData - model(xData)).abs().mean().item()))
         print("Module count: " + str(len(model.nns)))
-        model.info()
 
