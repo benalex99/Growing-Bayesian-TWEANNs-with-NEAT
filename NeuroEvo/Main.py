@@ -11,9 +11,11 @@ import gym
 from Environments.Classification import BayesianClassification
 import torch
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
+import random
+
 
 def neatTest():
-    optim = NEAT(iterations= 1000000000000, batchSize= 200, maxPopSize= 100, episodeDur= 400, showProgress= (1,1000))
+    optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
     env = GymEnv('CartPole-v0')
     # env = GymEnv('MountainCar-v0')
     # env = GymEnv('LunarLander-v2')
@@ -25,8 +27,9 @@ def neatTest():
     # # env = GymEnv('Copy-v0')
     #
     # print(env.outputs())
-    gg, score = Trainer.run(optim,env)
-    gg.visualize(ion= False)
+    gg, score = Trainer.run(optim, env)
+    gg.visualize(ion=False)
+
 
 def Qlearning():
     qLearning = QPolicy('LunarLander-v2')
@@ -34,12 +37,13 @@ def Qlearning():
 
 
 def BayesStuff():
-    dwbnn = DWBNN(layers= [(1, 2)], weightCount= 5)
+    dwbnn = DWBNN(layers=[(1, 2)], weightCount=5)
     for _ in range(10):
         print(dwbnn([0]))
 
+
 def nnToGenome():
-    genome = NEATGenome(5,1)
+    genome = NEATGenome(5, 1)
     for i in range(5):
         genome.mutate(i)
     genome.visualize()
@@ -47,5 +51,23 @@ def nnToGenome():
     genome.fromNN(nn)
     time.sleep(1000)
 
-nnToGenome()
-#Testing.test()
+
+def speciationTest():
+    for x in range(20):
+        genomes = []
+        genome = NEATGenome(5, 1)
+        genomes.append(genome)
+        optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
+
+        for i in range(20):
+            genomeN = genomes[random.randint(0, len(genomes) - 1)].copy()
+            genomeN.mutate(i)
+            genomes.append(genomeN)
+
+        optim.speciation(genomes, 0.5, 0.5, 1)
+        print(len(optim.species))
+
+
+# nnToGenome()
+# Testing.test()
+speciationTest()
