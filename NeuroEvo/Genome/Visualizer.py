@@ -1,7 +1,9 @@
 # First networkx library is imported  
 # along with matplotlib 
-import networkx as nx
 import matplotlib.pyplot as plt
+import networkx as nx
+
+
 #import matplotlib.transforms.Bbox as Bbox
 
 # Defining a Class 

@@ -14,9 +14,9 @@ from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 
 def neatTest():
     optim = NEAT(iterations= 1000000000000, batchSize= 200, maxPopSize= 100, episodeDur= 400, showProgress= (1,1000))
-    # env = GymEnv('CartPole-v0')
+    env = GymEnv('CartPole-v0')
     # env = GymEnv('MountainCar-v0')
-    env = GymEnv('LunarLander-v2')
+    # env = GymEnv('LunarLander-v2')
     # # env = GymEnv('LunarLanderContinuous-v2')
     # # env = GymEnv('Acrobot-v1')
     # # env = GymEnv('Pendulum-v0')
@@ -26,7 +26,6 @@ def neatTest():
     #
     # print(env.outputs())
     gg, score = Trainer.run(optim,env)
-    #
     gg.visualize(ion= False)
 
 def Qlearning():
