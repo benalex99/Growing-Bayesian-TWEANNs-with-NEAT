@@ -4,8 +4,6 @@ from Environments.GymEnv import GymEnv
 from Optimizers.QLearner.QLearner import QPolicy
 from Genome.Genome import Genome
 from Optimizers.NEAT.NEATGenome import NEATGenome
-import matplotlib.pyplot as plt
-import numpy as np
 from Testing import Testing
 import time
 from NeuralNetwork.AbsoluteGrad.Linear import AbsGradTest
@@ -13,10 +11,11 @@ import gym
 from Environments.Classification import BayesianClassification
 import torch
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
-from NeuralNetwork.HierarchicalDirichletProcess.DP import DP
+import random
+
 
 def neatTest():
-    optim = NEAT(iterations= 1000000000000, batchSize= 200, maxPopSize= 100, episodeDur= 400, showProgress= (1,1000))
+    optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
     env = GymEnv('CartPole-v0')
     # env = GymEnv('MountainCar-v0')
     # env = GymEnv('LunarLander-v2')
@@ -28,39 +27,47 @@ def neatTest():
     # # env = GymEnv('Copy-v0')
     #
     # print(env.outputs())
-    gg, score = Trainer.run(optim,env)
-    gg.visualize(ion= False)
+    gg, score = Trainer.run(optim, env)
+    gg.visualize(ion=False)
+
 
 def Qlearning():
     qLearning = QPolicy('LunarLander-v2')
     qLearning.run(100000)
 
+
 def BayesStuff():
-    dwbnn = DWBNN(layers= [(1, 2)], weightCount= 5)
+    dwbnn = DWBNN(layers=[(1, 2)], weightCount=5)
     for _ in range(10):
         print(dwbnn([0]))
 
+
 def nnToGenome():
-    genome = NEATGenome(5,1)
-    for i in range(50):
+    genome = NEATGenome(5, 1)
+    for i in range(5):
         genome.mutate(i)
     genome.visualize()
-    genome.increaseInput()
-    time.sleep(3)
-    genome.visualize()
     nn = genome.toNN()
-    nn.fromToLayers[0][0].weight[0] *= 2
-    genome.weightsFromNN(nn)
-    nn2 = genome.toNN()
-    print((nn.fromToLayers[0][0].weight == nn2.fromToLayers[0][0].weight).all())
-    print(nn.fromToLayers[0][0].weight)
-
-    plt.pause(1000)
+    genome.fromNN(nn)
+    time.sleep(1000)
 
 
-#nnToGenome()
-#Testing.test()
+def speciationTest():
+    for x in range(20):
+        genomes = []
+        genome = NEATGenome(5, 1)
+        genomes.append(genome)
+        optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
 
-# print(pred-data)
-dp = DP()
-dp.test()
+        for i in range(20):
+            genomeN = genomes[random.randint(0, len(genomes) - 1)].copy()
+            genomeN.mutate(i)
+            genomes.append(genomeN)
+
+        optim.speciation(genomes, 0.5, 0.5, 1)
+        print(len(optim.species))
+
+
+# nnToGenome()
+# Testing.test()
+speciationTest()
