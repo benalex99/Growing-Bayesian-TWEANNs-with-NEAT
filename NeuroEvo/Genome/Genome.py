@@ -157,7 +157,7 @@ class Genome():
         for edge in self.edges:
             if(edge.enabled):
                 G.addEdge(edge.fromNr, edge.toNr)
-                parents[edge.toNr].append(edge.fromNr)
+                parents[nodes.index(edge.toNr)].append(edge.fromNr)
 
         for y,layer in enumerate(groups):
             if(y == 0):
@@ -167,13 +167,13 @@ class Genome():
                 positions = []
                 for x, node in enumerate(layer):
                     x = 0
-                    for parent in parents[node]:
+                    for parent in parents[nodes.index(node)]:
                         x += nodePositions[nodes.index(parent)][1]
-                    positions.append(x/len(parents[node]))
+                    positions.append(x/len(parents[nodes.index(node)]))
                     # nodePositions.append((y,x/len(parents[node])))
                 order = np.argsort(positions)
-                for x in order:
-                     nodePositions.append((y, -len(layer)/2 + x))
+                for index in order:
+                     nodePositions.append((y, -len(layer)/2 + index))
 
         for node, nodePos in zip(nodes, nodePositions):
             G.addNode(node, pos = nodePos)

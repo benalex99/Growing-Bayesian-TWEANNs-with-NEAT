@@ -44,11 +44,11 @@ def BayesStuff():
 
 def nnToGenome():
     genome = NEATGenome(5, 1)
-    for i in range(5):
+    for i in range(10):
         genome.mutate(i)
     genome.visualize()
     nn = genome.toNN()
-    genome.fromNN(nn)
+    genome.weightsFromNN(nn)
     time.sleep(1000)
 
 
@@ -68,6 +68,6 @@ def speciationTest():
         print(len(optim.species))
 
 
-# nnToGenome()
+nnToGenome()
 # Testing.test()
-speciationTest()
+# speciationTest()
