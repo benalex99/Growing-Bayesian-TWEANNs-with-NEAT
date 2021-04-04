@@ -69,13 +69,13 @@ class NEATGenome(Genome.Genome):
     # Replace an edge by a node with the incoming edge having weight 1
     # and the outgoing edge having the original edges weight
     def addNode(self, hMarker):
+        edge = self.edges[random.randint(0, len(self.edges)-1)]
+
+        while(not edge.enabled):
+            edge = self.edges[random.randint(0, len(self.edges) - 1)]
+
         node = NodeGene.NodeGene(nodeNr=len(self.nodes))
         self.nodes.append(node)
-        edge = self.edges[random.randint(0, len(self.edges)-1)]
-        i = 0
-        while(not edge.enabled and i < 100):
-            edge = self.edges[random.randint(0, len(self.edges) - 1)]
-            i = i + 1
         self.specifiyEdge(edge, node, hMarker)
 
     # Tweak a random weight by adding Gaussian noise
@@ -83,7 +83,7 @@ class NEATGenome(Genome.Genome):
         indexWeight = random.randint(0, len(self.edges)-1)
         self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, weight)
 
-    # Add the Edge to an adding Node
+    # Add the incoming and outgoing edges to the newly added intervening Node
     def specifiyEdge(self, edge, newNode, hMarker):
         edge.deactivate()
         self.nodes[edge.fromNr].outputtingTo.remove(edge.toNr)

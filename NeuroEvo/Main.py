@@ -16,9 +16,9 @@ import random
 
 def neatTest():
     optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
-    env = GymEnv('CartPole-v0')
+    # env = GymEnv('CartPole-v0')
     # env = GymEnv('MountainCar-v0')
-    # env = GymEnv('LunarLander-v2')
+    env = GymEnv('LunarLander-v2')
     # # env = GymEnv('LunarLanderContinuous-v2')
     # # env = GymEnv('Acrobot-v1')
     # # env = GymEnv('Pendulum-v0')
@@ -35,12 +35,10 @@ def Qlearning():
     qLearning = QPolicy('LunarLander-v2')
     qLearning.run(100000)
 
-
 def BayesStuff():
     dwbnn = DWBNN(layers=[(1, 2)], weightCount=5)
     for _ in range(10):
         print(dwbnn([0]))
-
 
 def nnToGenome():
     genome = NEATGenome(5, 1)
@@ -50,7 +48,6 @@ def nnToGenome():
     nn = genome.toNN()
     genome.weightsFromNN(nn)
     time.sleep(1000)
-
 
 def speciationTest():
     for x in range(20):
@@ -68,6 +65,7 @@ def speciationTest():
         print(len(optim.species))
 
 
-nnToGenome()
+# nnToGenome()
 # Testing.test()
 # speciationTest()
+neatTest()

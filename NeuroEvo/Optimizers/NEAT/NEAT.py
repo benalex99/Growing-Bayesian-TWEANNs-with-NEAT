@@ -1,3 +1,4 @@
+import copy
 import random
 import time
 
@@ -61,25 +62,33 @@ class NEAT:
         weakestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness < secondGenome.fitness else secondGenome.copy()
         disjoint = False
 
-        for index, value in enumerate(weakestGenome.edges):
-            if value.hMarker == fittestGenome.edges[min(index, len(fittestGenome.edges) - 1)].hMarker and not disjoint:
+        for index, edge in enumerate(weakestGenome.edges):
+            if edge.hMarker == fittestGenome.edges[min(index, len(fittestGenome.edges) - 1)].hMarker and not disjoint:
                 if random.randint(0, 1) < 1:
-                    fittestGenome.edges[index] = value
+                    # Randomly assign one of either genomes weights
+                    fittestGenome.edges[index].weight = edge.weight
             else:
                 disjoint = True
                 if firstGenome.fitness == secondGenome.fitness:
-                    while value.toNr >= len(fittestGenome.nodes) or value.fromNr >= len(fittestGenome.nodes):
+                    # if the receiving or sending node does not exist, add it
+                    # TODO: Adding redundant nodes?
+                    while edge.toNr >= len(fittestGenome.nodes) or edge.fromNr >= len(fittestGenome.nodes):
                         fittestGenome.nodes.append(NodeGene(nodeNr=len(fittestGenome.nodes)))
-                    if (fittestGenome.nodes[value.fromNr].layer <= fittestGenome.nodes[value.toNr].layer and
-                            (not fittestGenome.nodes[value.fromNr].outputtingTo.__contains__(value.toNr))):
-                        fittestGenome.edges.append(value)
-                        fittestGenome.nodes[value.fromNr].outputtingTo.append(value.toNr)
-                        fittestGenome.increaseLayers(fittestGenome.nodes[value.fromNr], fittestGenome.nodes[value.toNr])
+                    # Check if the receiving neuron is not in a lower or equal layer
+                    # And if the connection already exists
+                    # TODO: Nodes has standard 0 layer assignment
+                    if (fittestGenome.nodes[edge.fromNr].layer <= fittestGenome.nodes[edge.toNr].layer and
+                            (not fittestGenome.nodes[edge.fromNr].outputtingTo.__contains__(edge.toNr))):
+                        fittestGenome.edges.append(copy.deepcopy(edge))
+                        if(edge.enabled):
+                            fittestGenome.nodes[edge.fromNr].outputtingTo.append(edge.toNr)
+                        fittestGenome.increaseLayers(fittestGenome.nodes[edge.fromNr], fittestGenome.nodes[edge.toNr])
 
         return fittestGenome
 
     def speciation(self, population, excessImp, disjointImp, weightImp):
         compareGenome = population[0]
+        self.species = []
         self.species.append([compareGenome])
 
         # The compare Genome to specify if the Genome should be in the same Species or create a new Species
@@ -172,5 +181,5 @@ class NEAT:
                 g2 = random.randint(0, max(0, int(len(self.population) / 2 - 1)))
             g = self.merge(self.population[g1],
                            self.population[g2])
-            self.speciation(self.population, 0, 0, 0)
+            # self.speciation(self.population, 0, 0, 0)
         return g

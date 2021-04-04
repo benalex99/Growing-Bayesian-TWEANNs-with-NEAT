@@ -169,7 +169,7 @@ class Genome():
                     x = 0
                     for parent in parents[nodes.index(node)]:
                         x += nodePositions[nodes.index(parent)][1]
-                    positions.append(x/len(parents[nodes.index(node)]))
+                    positions.append(x/max(1, len(parents[nodes.index(node)])))
                     # nodePositions.append((y,x/len(parents[node])))
                 order = np.argsort(positions)
                 for index in order:
