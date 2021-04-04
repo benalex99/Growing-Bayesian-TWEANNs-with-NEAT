@@ -20,4 +20,15 @@ class NodeGene:
         return NodeGene(self.nodeNr, self.layer, self.output, self.input, outputtingTo= self.outputtingTo.copy())
 
     def __repr__(self):
-        return "NodeNr: " + str(self.nodeNr) + " Layer: " + str(self.layer) + " Outputs to: " + str(self.outputtingTo) + "\n"
+        if(self.output):
+            nodeType = "Output"
+        elif(self.input):
+            nodeType = "Input"
+        else:
+            nodeType = "Hidden"
+
+        return "NodeNr: " + str(self.nodeNr) \
+               + " Layer: " + str(self.layer) \
+               + " Outputs to: " \
+               + str(self.outputtingTo)  + " "\
+               + "NodeType: " + nodeType + "\n"

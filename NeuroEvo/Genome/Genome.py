@@ -2,9 +2,9 @@ import numpy as np
 
 from NeuroEvo.Genome.Visualizer import Visualizer
 from NeuroEvo.Genome.NodeGene import NodeGene
-from NeuroEvo.NeuralNetwork import NeuralNetwork
+from NeuroEvo.Genome.ConnectionGene import EdgeGene
+from NeuroEvo.Genome.NeuralNetwork import NeuralNetwork
 
-from NeuroEvo.NeuralNetwork.NeuralNetwork import NeuralNetwork
 import torch
 import copy
 
@@ -25,6 +25,18 @@ class Genome():
         for i in range(outputSize):
             node = NodeGene(len(self.nodes),layer = 1, output = True)
             self.nodes.append(node)
+
+    # Add another input node to increase the input dimensionality
+    def increaseInput(self):
+        self.inputSize += 1
+        node = NodeGene(len(self.nodes),layer = 0, input = True)
+        self.nodes.append(node)
+
+    # Add another outputNode to increase the output dimensionality
+    def increaseOutput(self):
+        self.outputSize += 1
+        node = NodeGene(len(self.nodes),layer = 1, output = True)
+        self.nodes.append(node)
 
     # Mutate by adding an edge or node, or tweak a weight
     def mutate(self, hMarker):
@@ -76,46 +88,99 @@ class Genome():
                 inOuts = torch.LongTensor([ins, outs])
                 weights = torch.FloatTensor(weights)
                 layerWeights.append(torch.sparse.FloatTensor(inOuts, weights,
-                                                        torch.Size([len(layer),
-                                                        len(layerGroups[toI])])).to_dense().t())
+                                                        torch.Size([len(layer), len(layerGroups[toI])])
+                                                             ).to_dense().t())
                 layerBiases.append(torch.tensor(np.zeros(len(layerGroups[toI]))))
+
             layers.append(list(zip(layerWeights, layerBiases)))
 
         return NeuralNetwork(layers, True)
 
-    def fromNN(self, nn):
-        nodes = []
+    # Takes weights from a pytorch nn and updates our genomes edge weights from it
+    def weightsFromNN(self, nn):
         layers = nn.fromToLayers
+        layerGroups = self.getLayers()
 
-        # Add the first layers inputsize as input neurons
-        for _ in range(layers[0][0].weight.shape[1]):
-            node = NodeGene(len(nodes),layer = 0, input = True)
-            nodes.append(node)
-        print("Layer 0")
-        print(len(nodes))
-        for i, toLayer in enumerate(layers[0]):
-            node = NodeGene(len(nodes),layer = i, input = False, output = i == len(layers[0]) - 1)
-            nodes.append(node)
-            print("Layer " + str(i))
-            print(toLayer.weight)
-            print(toLayer.weight.shape[0])
-        for node in nodes:
-            print(node)
+        # TODO: Can we make this less terribly cascaded loops?
+        newWeights = []
+        # Add connections
+        for layerNr1, fromLayer in enumerate(layers):
+           for layerNr2, toLayer in enumerate(fromLayer):
+               for index1, outputVector in enumerate(toLayer.weight):
+                   for index2, weight in enumerate(outputVector.data):
+                       if weight != 0:
+                           newWeights.append([layerGroups[layerNr1][index2],
+                                           layerGroups[layerNr2 + layerNr1 + 1][index1],
+                                                       weight.item()])
+        # TODO: Optimize finding the edges by keeping them indexed based on their input and output
+        # TODO: For O(1) access performance instead of O(edges/2)
+        # Assign weights to old edges
+        for edge in self.edges:
+            for newWeight in newWeights:
+                if edge.fromNr == newWeight[0] and edge.toNr == newWeight[1]:
+                    edge.weight = newWeight[2]
+                    break
 
+    # TODO: Implement updating the weights with gradients. Zero the gradients of 0 weights and frozen weights!
+    # Tunes the weights using gradient descent
+    def tuneWeights(self, xData, yData):
+        model = self.toNN()
+
+        criterion = torch.nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+        for t in range(iter):
+            # Forward pass: Compute predicted y by passing x to the model
+            y_pred = model(xData)
+            loss = criterion(y_pred, yData)
+
+            if t % 100 == 99:
+                print("Iteration: " + str(t) + " Loss: " + str(loss.item()))
+
+            # Zero gradients, perform a backward pass, and update the weights.
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+    # Visualize the genomes graph representation
     def visualize(self, ion=True):
         groups = self.getLayers()
         G = Visualizer()
-
+        nodePositions = []
+        parents = []
+        nodes = []
         for y,layer in enumerate(groups):
             for x, node in enumerate(layer):
-                G.addNode(node, pos = (y, -len(layer)/2 + x))
+                nodes.append(node)
+                parents.append([])
 
         for edge in self.edges:
             if(edge.enabled):
                 G.addEdge(edge.fromNr, edge.toNr)
+                parents[edge.toNr].append(edge.fromNr)
+
+        for y,layer in enumerate(groups):
+            if(y == 0):
+                for x, node in enumerate(layer):
+                    nodePositions.append((y, -len(layer)/2 + x))
+            else:
+                positions = []
+                for x, node in enumerate(layer):
+                    x = 0
+                    for parent in parents[node]:
+                        x += nodePositions[nodes.index(parent)][1]
+                    positions.append(x/len(parents[node]))
+                    # nodePositions.append((y,x/len(parents[node])))
+                order = np.argsort(positions)
+                for x in order:
+                     nodePositions.append((y, -len(layer)/2 + x))
+
+        for node, nodePos in zip(nodes, nodePositions):
+            G.addNode(node, pos = nodePos)
 
         G.visualize(ion= ion)
 
+    # Update the layer assignments of the nodes and return them in a list of lists
     def getLayers(self):
         for node in self.nodes:
             if not node.input:
@@ -131,7 +196,8 @@ class Genome():
             group = []
             for i2, node in enumerate(self.nodes):
                 if (node.layer == i):
-                    group.append(i2)
+                    group.append(node.nodeNr)
+            # group.sort(reverse= True)
             layerGroups.append(group)
         return layerGroups
 

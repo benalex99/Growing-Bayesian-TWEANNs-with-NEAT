@@ -159,5 +159,4 @@ class Ensemble(nn.Module):
         print([1,0], self(torch.tensor([[1,0]]).float()).item())
         print([1,1], self(torch.tensor([[1,1]]).float()).item())
 
-
     #Simply assigning the datapoint to the network with the least error does not produce any generalized network,

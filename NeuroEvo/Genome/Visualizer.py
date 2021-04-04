@@ -21,8 +21,8 @@ class Visualizer:
     def addEdge(self, a, b):
         self.G.add_edge(a,b)
 
-    def addNode(self, nodeNr, pos = (0,0)):
-        self.G.add_node(nodeNr, pos = pos)
+    def addNode(self, nodeNr, pos = (0,0), size = 0):
+        self.G.add_node(nodeNr, pos = pos, size = size)
 
     # In visualize function G is an object of
     # class Graph given by networkx G.add_edges_from(visual)

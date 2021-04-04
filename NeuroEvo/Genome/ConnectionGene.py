@@ -18,4 +18,4 @@ class EdgeGene:
         return EdgeGene(self.fromNr, self.toNr, self.weight, enabled = self.enabled, hMarker = self.hMarker)
 
     def __repr__(self):
-        return str(self.fromNr) + " " + str(self.toNr) + " " + str(self.enabled)
+        return str(self.fromNr) + " " + str(self.toNr) + " " + str(self.weight) + " " + str(self.enabled)
