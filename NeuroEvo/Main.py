@@ -1,17 +1,13 @@
-from Optimizers.NEAT.NEAT import NEAT
-from Optimizers.Trainer import Trainer
-from Environments.GymEnv import GymEnv
-from Optimizers.QLearner.QLearner import QPolicy
-from Genome.Genome import Genome
-from Optimizers.NEAT.NEATGenome import NEATGenome
-from Testing import Testing
-import time
-from NeuralNetwork.AbsoluteGrad.Linear import AbsGradTest
-import gym
-from Environments.Classification import BayesianClassification
-import torch
-from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 import random
+import time
+
+from NeuroEvo.Environments.GymEnv import GymEnv
+from NeuroEvo.Optimizers.NEAT.NEAT import NEAT
+from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
+from NeuroEvo.Optimizers.QLearner.QLearner import QPolicy
+from NeuroEvo.Optimizers.Trainer import Trainer
+
+from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 
 
 def neatTest():
@@ -50,19 +46,23 @@ def nnToGenome():
     time.sleep(1000)
 
 def speciationTest():
-    for x in range(20):
+    avgSpecies = 0
+    iter = 10
+    for x in range(iter):
         genomes = []
         genome = NEATGenome(5, 1)
         genomes.append(genome)
         optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
 
-        for i in range(20):
+        for i in range(20000):
             genomeN = genomes[random.randint(0, len(genomes) - 1)].copy()
             genomeN.mutate(i)
             genomes.append(genomeN)
 
-        optim.speciation(genomes, 0.5, 0.5, 1)
+        optim.speciation(genomes, 0.5, 0.5, 1, 8)
         print(len(optim.species))
+        avgSpecies += len(optim.species)
+    print("Average number of Species:" + str(avgSpecies/iter))
 
 
 # nnToGenome()
