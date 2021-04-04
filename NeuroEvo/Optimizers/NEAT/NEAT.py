@@ -19,7 +19,7 @@ class NEAT:
         self.showProgress = showProgress
         return
 
-    def run(self, rootGenome, env, seed=0):
+    def run(self, rootGenome, env):
         self.hMarker = 1
         self.population.append(rootGenome)
         self.visualize(rootGenome, env, 500, useDone=False)
@@ -43,21 +43,22 @@ class NEAT:
             self.population.sort(key=lambda x: x.fitness, reverse=True)
 
             # Discard bad mutations from the population until the max population count is reached
-            while (len(self.population) > self.maxPopSize):
+            while len(self.population) > self.maxPopSize:
                 i = random.randint(max(0, int(len(self.population) / 2 - 1)), len(self.population) - 1)
                 self.population.remove(self.population[i])
             self.median = self.population[int(len(self.population) / 2)].fitness
+
             print("Took : " + str(time.time() - ntime))
             print("Median score: " + str(self.median))
             print("Best Score: " + str(self.bestGene().fitness) + "\n")
-            if (self.showProgress[0] > 0 and iter % self.showProgress[0] == 0):
+            if self.showProgress[0] > 0 and iter % self.showProgress[0] == 0:
                 self.visualize(self.bestGene(), env, self.showProgress[1], seed=iter)
 
-        # Get the best gene from the population
+        # Return the best gene from the population
         return self.bestGene()
-        # if(self.population)
 
-    def merge(self, firstGenome: NEATGenome, secondGenome: NEATGenome):
+    @staticmethod
+    def merge(firstGenome: NEATGenome, secondGenome: NEATGenome):
         fittestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness >= secondGenome.fitness else secondGenome.copy()
         weakestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness < secondGenome.fitness else secondGenome.copy()
         disjoint = False
@@ -86,7 +87,7 @@ class NEAT:
 
         return fittestGenome
 
-    def speciation(self, population, excessImp, disjointImp, weightImp, inclusionThreshold = 2):
+    def speciation(self, population, excessImp, disjointImp, weightImp, inclusionThreshold=2):
         """Compares all genomes from a population with the representative genome of a species and append or defines new
         Species.
 
@@ -170,8 +171,8 @@ class NEAT:
         is calculated
 
         Args:
-            firstGenome (list): The current Genome
-            secondGenome (list): The compare Genome
+            firstGenome (NEATGenome): The current Genome
+            secondGenome (NEATGenome): The compare Genome
 
         Returns:
             (int, int, float): The Number of all Disjoint Genes, all Excess Genes and the average Weight of matching Genes
@@ -212,12 +213,13 @@ class NEAT:
                 bestGene = genome
         return bestGene
 
-    def visualize(self, gene, env, duration, useDone=True, seed=0):
+    @staticmethod
+    def visualize(gene, env, duration, useDone=True, seed=0):
         gene.visualize()
         env.visualize(gene, duration=duration, useDone=useDone, seed=seed)
 
     def newGenome(self):
-        if (random.randint(0, 1) < 1 or len(self.population) <= 3):
+        if random.randint(0, 1) < 1 or len(self.population) <= 3:
             g = self.population[random.randint(0, max(0, int(len(self.population) / 2 - 1)))].copy()
             self.hMarker += g.mutate(self.hMarker)
         else:
