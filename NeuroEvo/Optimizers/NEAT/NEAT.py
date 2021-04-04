@@ -78,9 +78,23 @@ class NEAT:
 
         return fittestGenome
 
-    def speciation(self, population, excessImp, disjointImp, weightImp):
+    def speciation(self, population, excessImp, disjointImp, weightImp, inclusionThreshold = 2):
+        """Compares all genomes from a population with the representative genome of a species and append or defines new
+        Species.
+
+        Args:
+            population (list): All Genomes
+            excessImp (float): The Importance of all Excess Genes within two Genomes
+            disjointImp (float): The Importance of all Disjoint Genes within two Genomes
+            weightImp (float): The Importance of the Weight difference between two Genomes
+            inclusionThreshold (float): The Range where the Delta of an Genome to the compare Genome should be appended
+                                        to the Species of the compare Genome
+
+        Returns:
+            None
+        """
         compareGenome = population[0]
-        self.species.append([compareGenome])
+        self.species.append([compareGenome])  # Creates the first Species based on the first Genome in the population
 
         # The compare Genome to specify if the Genome should be in the same Species or create a new Species
         for index, genome in enumerate(population):
@@ -98,15 +112,23 @@ class NEAT:
                             self.deltaValue(excessImp, disjointImp, weightImp, excessGenes, disjointGenes, avgWeight,
                                             factorN))
 
-                if min(deltaValues) < 2:
+                if min(deltaValues) < inclusionThreshold:
                     self.species[deltaValues.index(min(deltaValues))].append(genome)
                 else:
                     self.species.append([genome])
 
-    # Checks if both Genomes have more then 20 Genes and set the nFactor to the length
-    # of the Genome with more genes, if both are under 20 the nFactor is 1
     @staticmethod
     def setFactorN(firstGenomeEdges, secondGenomeEdges):
+        """Checks if one Genomes have more then 20 Genes and set the 'Factor N' to the length of the Genome with
+        more Genes. If both Genomes have under 20 Genes, the 'Factor N' is set to 1.
+
+        Args:
+            firstGenomeEdges (list): All Edges from the Genomes we compare to
+            secondGenomeEdges (list): All Edges from the current Genome
+
+        Returns:
+            N (int) if one Genome have more then 20 Genes, or 1 if both have less
+        """
         n = max(len(firstGenomeEdges), len(secondGenomeEdges))
         if n > 20:
             return n
@@ -115,13 +137,37 @@ class NEAT:
 
     @staticmethod
     def deltaValue(excessImp, disjointImp, weightImp, excessGenes, disjointGenes, avgWeight, factorN):
+        """Calculates the Delta Value of two Genomes compared to each other based on Excess Genes, Disjoint Genes
+        and the Weight difference
+
+        Args:
+            excessImp (float): The Importance of all Excess Genes within two Genomes
+            disjointImp (float): The Importance of all Disjoint Genes within two Genomes
+            weightImp (float): The Importance of the Weight difference between two Genomes
+            excessGenes (int): The Number of all Excess Genes within two Genomes
+            disjointGenes (int): The Number of all Disjoint Genes within two Genomes
+            avgWeight (float): The average Weight between matching Genes
+            factorN (int): Normalizes function for Genome Size
+        Returns:
+            The calculated Delta Value as an float.
+        """
         return (((excessImp * excessGenes) / factorN)
                 + ((disjointImp * disjointGenes) / factorN)
                 + (weightImp * avgWeight))
 
     @staticmethod
     def getExcessAndDisjoint(firstGenome, secondGenome):
-        disjointGenes, excessGenes, avgWeight = 0, 0, 0
+        """Gets the number of all Excess and Disjoint Genes within both Genomes. The Average Weight of matching Genes
+        is calculated
+
+        Args:
+            firstGenome (list): The current Genome
+            secondGenome (list): The compare Genome
+
+        Returns:
+            (int, int, float): The Number of all Disjoint Genes, all Excess Genes and the average Weight of matching Genes
+        """
+        disjointGenes, excessGenes, avgWeight = 0, 0, 0.0
 
         if len(firstGenome.edges) == 0 or len(secondGenome.edges) == 0:
             excessGenes = max(len(firstGenome.edges) - 1, len(secondGenome.edges) - 1)
@@ -172,5 +218,5 @@ class NEAT:
                 g2 = random.randint(0, max(0, int(len(self.population) / 2 - 1)))
             g = self.merge(self.population[g1],
                            self.population[g2])
-            self.speciation(self.population, 0, 0, 0)
+            # self.speciation(self.population, 0, 0, 0)
         return g
