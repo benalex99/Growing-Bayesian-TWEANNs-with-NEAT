@@ -8,6 +8,8 @@ from NeuroEvo.Optimizers.QLearner.QLearner import QPolicy
 from NeuroEvo.Optimizers.Trainer import Trainer
 
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
+from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPCategorical import DP as DPC
+from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPExample import DP as DPE
 
 
 def neatTest():
@@ -68,4 +70,5 @@ def speciationTest():
 # nnToGenome()
 # Testing.test()
 # speciationTest()
-neatTest()
+# neatTest()
+DPC.test()
