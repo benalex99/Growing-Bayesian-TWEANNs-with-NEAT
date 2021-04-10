@@ -71,7 +71,7 @@ def speciationTest():
 # nnToGenome()
 # Testing.test()
 # speciationTest()
-# neatTest()
-DPC.test()
+neatTest()
+# DPC.test()
 
 # print(Env.NestedCategoricalWithBias(5,4, -2).sample(100))

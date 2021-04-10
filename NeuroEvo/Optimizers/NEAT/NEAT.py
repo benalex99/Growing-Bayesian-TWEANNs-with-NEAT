@@ -58,34 +58,48 @@ class NEAT:
         return self.bestGene()
 
     @staticmethod
-    def merge(firstGenome: NEATGenome, secondGenome: NEATGenome):
-        fittestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness >= secondGenome.fitness else secondGenome.copy()
-        weakestGenome: NEATGenome = firstGenome.copy() if firstGenome.fitness < secondGenome.fitness else secondGenome.copy()
+    def merge(firstGenome, secondGenome):
+        """The merging process takes both parent Genomes and merge it together. Genes with the same historical Marker
+        get randomly chosen by one of the parent Genome. Any other Disjoint or Excess Genes get added to the merged
+        Genome
+
+        Args:
+            firstGenome (NEATGenome): Parent Genome 1
+            secondGenome (NEATGenome): Parent Genome 2
+
+        Returns:
+            NEATGenome: The merged child Genome of both parent Genomes
+        """
+        fitterGenome = firstGenome.copy() if firstGenome.fitness >= secondGenome.fitness else secondGenome.copy()
+        weakerGenome = firstGenome.copy() if firstGenome.fitness < secondGenome.fitness else secondGenome.copy()
         disjoint = False
 
-        for index, edge in enumerate(weakestGenome.edges):
-            if edge.hMarker == fittestGenome.edges[min(index, len(fittestGenome.edges) - 1)].hMarker and not disjoint:
+        # Iterates through the Genome with the lower Fitness Score to implement missing Genes to the fitter Genome
+        for index, edge in enumerate(weakerGenome.edges):
+
+            if edge.hMarker == fitterGenome.edges[min(index, len(fitterGenome.edges) - 1)].hMarker and not disjoint:
+                print(edge.hMarker)
                 if random.randint(0, 1) < 1:
                     # Randomly assign one of either genomes weights
-                    fittestGenome.edges[index].weight = edge.weight
+                    fitterGenome.edges[index].weight = edge.weight
             else:
                 disjoint = True
                 if firstGenome.fitness == secondGenome.fitness:
                     # if the receiving or sending node does not exist, add it
                     # TODO: Adding redundant nodes?
-                    while edge.toNr >= len(fittestGenome.nodes) or edge.fromNr >= len(fittestGenome.nodes):
-                        fittestGenome.nodes.append(NodeGene(nodeNr=len(fittestGenome.nodes)))
+                    while edge.toNr >= len(fitterGenome.nodes) or edge.fromNr >= len(fitterGenome.nodes):
+                        fitterGenome.nodes.append(NodeGene(nodeNr=len(fitterGenome.nodes)))
                     # Check if the receiving neuron is not in a lower or equal layer
                     # And if the connection already exists
                     # TODO: Nodes has standard 0 layer assignment
-                    if (fittestGenome.nodes[edge.fromNr].layer <= fittestGenome.nodes[edge.toNr].layer and
-                            (not fittestGenome.nodes[edge.fromNr].outputtingTo.__contains__(edge.toNr))):
-                        fittestGenome.edges.append(copy.deepcopy(edge))
-                        if(edge.enabled):
-                            fittestGenome.nodes[edge.fromNr].outputtingTo.append(edge.toNr)
-                        fittestGenome.increaseLayers(fittestGenome.nodes[edge.fromNr], fittestGenome.nodes[edge.toNr])
+                    if (fitterGenome.nodes[edge.fromNr].layer <= fitterGenome.nodes[edge.toNr].layer and
+                            (not fitterGenome.nodes[edge.fromNr].outputtingTo.__contains__(edge.toNr))):
+                        fitterGenome.edges.append(copy.deepcopy(edge))
+                        if edge.enabled:
+                            fitterGenome.nodes[edge.fromNr].outputtingTo.append(edge.toNr)
+                        fitterGenome.increaseLayers(fitterGenome.nodes[edge.fromNr], fitterGenome.nodes[edge.toNr])
 
-        return fittestGenome
+        return fitterGenome
 
     def speciation(self, population, excessImp, disjointImp, weightImp, inclusionThreshold=2):
         """Compares all genomes from a population with the representative genome of a species and append or defines new
@@ -117,7 +131,7 @@ class NEAT:
                     compareGenome = species[0]
                     if not (genome == compareGenome):
                         # Defines the number of Excess and Disjoint Genes and the average Weight difference
-                        excessGenes, disjointGenes, avgWeight = self.getExcessAndDisjoint(genome, compareGenome)
+                        disjointGenes, excessGenes, avgWeight = self.getExcessAndDisjoint(genome, compareGenome)
                         deltaValues.append(
                             self.deltaValue(excessImp, disjointImp, weightImp, excessGenes, disjointGenes, avgWeight,
                                             factorN))
@@ -129,15 +143,15 @@ class NEAT:
 
     @staticmethod
     def setFactorN(firstGenomeEdges, secondGenomeEdges):
-        """Checks if one Genomes have more then 20 Genes and set the 'Factor N' to the length of the Genome with
-        more Genes. If both Genomes have under 20 Genes, the 'Factor N' is set to 1.
+        """Checks if one Genomes have more then 20 Genes and set the 'Factor N' (Normalize Function)
+        to the length of the Genome with more Genes. If both Genomes have under 20 Genes, the 'Factor N' is set to 1.
 
         Args:
             firstGenomeEdges (list): All Edges from the Genomes we compare to
             secondGenomeEdges (list): All Edges from the current Genome
 
         Returns:
-            N (int) if one Genome have more then 20 Genes, or 1 if both have less
+            (int): The size of all Genes in the larger Genome if one Genome have more then 20 Genes, if not return 1
         """
         n = max(len(firstGenomeEdges), len(secondGenomeEdges))
         if n > 20:
@@ -203,15 +217,17 @@ class NEAT:
                     disjointGenes += 1
                 else:
                     excessGenes += 1
-        return excessGenes, disjointGenes, avgWeight
+        return disjointGenes, excessGenes, avgWeight
 
     def bestGene(self):
+        """Iterate through the whole Population and look for the fittest Genome
+
+        Returns:
+            NEATGenome: Returns the Genome with the best Fitness Value
+        """
+        # Sorts the Population by the Genome with the highest Fitness Value
         self.population.sort(key=lambda x: x.fitness, reverse=True)
-        bestGene = self.population[0]
-        for genome in self.population:
-            if genome.fitness > bestGene.fitness:
-                bestGene = genome
-        return bestGene
+        return self.population[0]
 
     @staticmethod
     def visualize(gene, env, duration, useDone=True, seed=0):
