@@ -8,7 +8,7 @@ from pyro.optim import Adam
 from pyro.distributions import *
 from pyro.infer import Trace_ELBO, SVI
 from tqdm import tqdm
-
+import NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPEnvironment as DPEnv
 
 class DP():
     @staticmethod
@@ -42,7 +42,7 @@ class DP():
 
     def model(self, data):
         """
-        The model with static parameters
+        The model with unattuned parameters
         :param data: The data whose probability we attempt to find.
         :return: Nonesies
         """
@@ -51,13 +51,13 @@ class DP():
         alpha = self.alpha
         self.N = len(data)
 
-        # Sample cluster probabilities between 0 and 1 for each cluster, for the stick breaking process
+        # Sample T-1 many cluster probabilities between 0 and 1 for each cluster, for the stick breaking process
         with pyro.plate("beta_plate", self.T-1):
             beta = pyro.sample("beta", Beta(1, alpha))
 
-        # Sample categorical probabilities from a dirichlet with uniform class counts
+        # Our allow the categoricals to take any distribution
         with pyro.plate("mu_plate", self.T):
-            mu = pyro.sample("mu", Dirichlet(1/self.classCount * torch.ones(self.classCount)))
+            mu = pyro.sample("mu", Dirichlet(1/self.featureCount * torch.ones(self.featureCount)))
 
         with pyro.plate("data", self.N):
             # Generate cluster assignments based on their weights from the stick breaking process
@@ -67,8 +67,8 @@ class DP():
 
     def guide(self, data):
         """
-        The inference guide that declares our parameters, their use and their priors.
-        :param data: Our data. It is not directly used, but guides the sampling.
+        The inference guide that declares how to explore the parameter space
+        :param data: Our data. It is not directly used, but we need the shape.
         :return:
         """
         T = self.T
@@ -76,22 +76,27 @@ class DP():
 
         # Stick breaking parameter prior from uniform
         kappa = pyro.param('kappa', lambda: Uniform(0, 2).sample([T-1]), constraint=constraints.positive)
-        # Cluster dirichlet pseudocount from dirichlet-multinomial. 1000 is an arbitrary choice
-        tau = pyro.param('tau', lambda: DirichletMultinomial(torch.ones(self.classCount), 1000).sample([T]), constraint=constraints.positive)
-        # Cluster assignment probability prior from dirichlet
+
+        # Sample N many hypothetical cluster probabilities, for T many clusters, from a dirichlet
         phi = pyro.param('phi', lambda: Dirichlet(1/T * torch.ones(T)).sample([N]), constraint=constraints.simplex)
+
+        # Sample T many hypothetical dirichlet pseudocounts from a DirichletMultinomial
+        # TODO: 10000 is an arbitrary choice. Since tau+= 1 for numerical reasons,
+        #  a higher number increases accuracy as it lessens the impact of tau += 1
+        tau = pyro.param('tau', lambda: DirichletMultinomial(1/self.featureCount * torch.ones(self.featureCount),10000).sample([T]), constraint=constraints.positive)
+        tau.data += 0.0001
 
         # Sample cluster probabilities, for each cluster - 1
         with pyro.plate("beta_plate", T-1):
-            q_beta = pyro.sample("beta", Beta(torch.ones(T-1), kappa))
+            pyro.sample("beta", Beta(torch.ones(T-1), kappa))
 
-        # Sample cluster parameters/ categorical distributions
-        with pyro.plate("mu_plate", T):
-            q_mu = pyro.sample("mu", Dirichlet(tau))
+        # Parameterize the dirichlet for generating our cluster distributions
+        with pyro.plate("mu_plate", self.T):
+             pyro.sample("mu", Dirichlet(tau))
 
         # Sample cluster assignments
         with pyro.plate("data", N):
-            z = pyro.sample("z", Categorical(phi))
+            pyro.sample("z", Categorical(phi))
 
     def train(self, num_iterations):
         pyro.clear_param_store()
@@ -105,15 +110,23 @@ class DP():
         true_weights = weights[weights > threshold] / torch.sum(weights[weights > threshold])
         return true_centers, true_weights
 
-    def data(self, N= 200, classCount = 10):
-        self.data1 = Categorical(Dirichlet(1/classCount * torch.ones(classCount)).sample([1])).sample([N])
-        self.data2 = Categorical(Dirichlet(1/classCount * torch.ones(classCount)).sample([1])).sample([N])
-        data = torch.cat((self.data1, self.data2)).flatten()
+    def data(self, N= 200, classCount = 5, featureCount = 10):
+        self.categoricals = []
+        for i in range(classCount):
+            self.categoricals.append(Categorical(Dirichlet(1/featureCount * torch.ones(featureCount)).sample([1])))
+
+        self.classProbs = Dirichlet(1/classCount * torch.ones(classCount)).sample([1])[0]
+
+        data = []
+        for _ in range(N):
+            data.append(self.categoricals[Categorical(self.classProbs).sample([1])[0]].sample([1]))
+        data = torch.Tensor(data).flatten().int()
         return data
 
-    def run(self, classCount= 10):
-        self.data = self.data(classCount=classCount)
+    def run(self, classCount= 5, featureCount = 10):
+        self.data = self.data(classCount=classCount, featureCount=featureCount)
         self.classCount = classCount
+        self.featureCount = featureCount
 
         self.T = 6
         optim = Adam({"lr": 0.05})
@@ -126,32 +139,26 @@ class DP():
         self.train(1000)
 
         # We make a point-estimate of our model parameters using the posterior means of tau and phi for the centers and weights
-        categoricals, weights = self.truncate(truncationFactor, pyro.param("tau").detach(), torch.mean(pyro.param("phi").detach(), dim=0))
+        dirichlets, weights = self.truncate(truncationFactor, pyro.param("tau").detach(), torch.mean(pyro.param("phi").detach(), dim=0))
 
-        distr1 = torch.ones(10)
-        distr2 = torch.ones(10)
-        distr = torch.ones(10)
-        for i in self.data1:
-            distr1[i] += 1
-        for i in self.data2:
-            distr2[i] += 1
+        plt.figure(figsize=(15, 5))
+        subplotWidth = max(len(self.categoricals), len(dirichlets))
+
+        for i, (categorical, classProb) in enumerate(zip(self.categoricals,self.classProbs)):
+            plt.subplot(3, subplotWidth, i+1)
+            plt.title(round(classProb.item(),2))
+            plt.bar(range(featureCount), (categorical.probs.numpy()*100).flatten(), color="blue")
+
+        distr = torch.zeros(10)
         for i in self.data:
             distr[i] += 1
 
-        print(Dirichlet(distr2).entropy())
-        print(Dirichlet(distr1).entropy()/2+Dirichlet(distr2).entropy()/2)
-        print(Dirichlet(distr).entropy())
+        plt.subplot(3, subplotWidth, subplotWidth + 1)
+        plt.bar(range(featureCount), distr, color="green")
 
-        plt.figure(figsize=(15, 5))
-        plt.subplot(3, 3, 1)
-        plt.bar(range(10), distr1, color="blue")
-        plt.subplot(3, 3, 2)
-        plt.bar(range(10), distr2, color="blue")
-        plt.subplot(3, 3, 3)
-        plt.bar(range(10), distr, color="blue")
-
-        for i, categorical in enumerate(categoricals):
-            plt.subplot(3, 3, 4+i)
-            plt.bar(range(10), categorical, color="red")
+        for i, (dirichletCounts, weight) in enumerate(zip(dirichlets, weights)):
+            plt.subplot(3, subplotWidth, subplotWidth*2 + i + 1)
+            plt.title(round(weight.item(), 2))
+            plt.bar(range(featureCount), dirichletCounts, color="red")
         plt.tight_layout()
         plt.show()

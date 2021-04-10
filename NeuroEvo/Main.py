@@ -6,9 +6,10 @@ from NeuroEvo.Optimizers.NEAT.NEAT import NEAT
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 from NeuroEvo.Optimizers.QLearner.QLearner import QPolicy
 from NeuroEvo.Optimizers.Trainer import Trainer
+import NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPEnvironment as Env
 
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
-from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPCategorical import DP as DPC
+from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPCategoricalAgent import DP as DPC
 from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPExample import DP as DPE
 
 
@@ -72,3 +73,5 @@ def speciationTest():
 # speciationTest()
 # neatTest()
 DPC.test()
+
+# print(Env.NestedCategoricalWithBias(5,4, -2).sample(100))

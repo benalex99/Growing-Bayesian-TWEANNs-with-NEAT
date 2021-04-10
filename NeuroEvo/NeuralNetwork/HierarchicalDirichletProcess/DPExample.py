@@ -70,7 +70,6 @@ class DP():
         # Sample data points from the assigned clusters
         with pyro.plate("data", self.N):
             z = pyro.sample("z", Categorical(self.mix_weights(beta)))
-            print(MultivariateNormal(mu[z], torch.eye(2)).sample([1]).shape)
             pyro.sample("obs", MultivariateNormal(mu[z], torch.eye(2)), obs=data)
 
 
@@ -116,7 +115,7 @@ class DP():
 
     def run(self):
         self.data = data()
-        print("shape " +str(self.data.shape))
+
         self.T = 6
         optim = Adam({"lr": 0.05})
         self.svi = SVI(self.model, self.guide, optim, loss=Trace_ELBO())
