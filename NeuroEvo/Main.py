@@ -6,8 +6,10 @@ from NeuroEvo.Optimizers.NEAT.NEAT import NEAT
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 from NeuroEvo.Optimizers.QLearner.QLearner import QPolicy
 from NeuroEvo.Optimizers.Trainer import Trainer
+from NeuroEvo.NeuralNetwork.UnclassifiedExperiments.chess_questionmark_.myChess import myChess
 import NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPEnvironment as Env
-
+from  pyro.distributions import *
+import torch
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPCategoricalAgent import DP as DPC
 from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPExample import DP as DPE
@@ -71,7 +73,8 @@ def speciationTest():
 # nnToGenome()
 # Testing.test()
 # speciationTest()
-neatTest()
+# neatTest()
 # DPC.test()
 
-# print(Env.NestedCategoricalWithBias(5,4, -2).sample(100))
+# print(Categorical(torch.Tensor([1])).sample([1]))
+yo = myChess()

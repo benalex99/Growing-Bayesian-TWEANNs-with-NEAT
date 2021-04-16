@@ -74,3 +74,4 @@ class hierarchicalDirichletData():
 
 
     def sample(self, N):
+        pass
