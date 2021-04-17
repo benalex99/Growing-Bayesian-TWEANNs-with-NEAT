@@ -2,7 +2,10 @@ import copy
 import math
 import random
 
-from NeuroEvo.Genome import Genome, NodeGene, ConnectionGene
+from NeuroEvo.Genome import Genome
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT import AdvancedNodeGene
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT import AdvancedEdgeGene
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.AdvancedNodeGene import NodeType
 import torch
 import pyro
 import numpy as np
@@ -30,6 +33,7 @@ class ProbabilisticGenome(Genome.Genome):
             self.tweakWeight(1)
             return 0
 
+    # TODO: Change edge adding for dirichlet, categorical and gaussian nodes
     # Add an edge to connect two nodes
     def addEdge(self, hMarker, outNode = None):
         fromI = random.randint(0, len(self.nodes) - 1)
@@ -60,19 +64,23 @@ class ProbabilisticGenome(Genome.Genome):
                 toI = random.randint(self.inputSize, len(self.nodes) - 1)
 
         self.nodes[fromI].outputtingTo.append(toI)
-        self.edges.append(ConnectionGene.EdgeGene(fromI, toI, ((random.random()*2)-1), enabled= True, hMarker = hMarker))
+        self.edges.append(AdvancedEdgeGene.AdvancedEdgeGene(fromI, toI, ((random.random()*2)-1), enabled= True, hMarker = hMarker))
         self.increaseLayers(self.nodes[fromI], self.nodes[toI])
 
     # Replace an edge by a node with the incoming edge having weight 1
     # and the outgoing edge having the original edges weight
+    # TODO: Last layer nodes MUST be of distribution type
     def addNode(self, hMarker):
+        # Search for an active edge to replace
         edge = self.edges[random.randint(0, len(self.edges)-1)]
-
         while(not edge.enabled):
             edge = self.edges[random.randint(0, len(self.edges) - 1)]
 
-        node = NodeGene.NodeGene(nodeNr=len(self.nodes))
+        # Initialize a node with random node type
+        node = AdvancedNodeGene.AdvancedNodeGene(nodeNr=len(self.nodes), type=NodeType.random())
         self.nodes.append(node)
+
+        # Manage the connection changes
         self.specifiyEdge(edge, node, hMarker)
 
     # Tweak a random weight by adding Gaussian noise
@@ -80,42 +88,47 @@ class ProbabilisticGenome(Genome.Genome):
         indexWeight = random.randint(0, len(self.edges)-1)
         self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, weight)
 
+    # TODO: Change edge adding dirichlet, categorical and gaussian nodes
     # Add the incoming and outgoing edges to the newly added intervening Node
     def specifiyEdge(self, edge, newNode, hMarker):
         edge.deactivate()
         self.nodes[edge.fromNr].outputtingTo.remove(edge.toNr)
         self.nodes[edge.fromNr].outputtingTo.append(newNode.nodeNr)
 
-        self.edges.append(ConnectionGene.EdgeGene(edge.fromNr, newNode.nodeNr, 1, enabled= True, hMarker = hMarker))
-        self.edges.append(ConnectionGene.EdgeGene(newNode.nodeNr, edge.toNr, edge.weight, enabled= True, hMarker= (hMarker + 1)))
+        self.edges.append(AdvancedEdgeGene.AdvancedEdgeGene(edge.fromNr, newNode.nodeNr, 1, enabled= True, hMarker = hMarker))
+        self.edges.append(AdvancedEdgeGene.AdvancedEdgeGene(newNode.nodeNr, edge.toNr, edge.weight, enabled= True, hMarker= (hMarker + 1)))
 
         newNode.outputtingTo.append(edge.toNr)
         self.increaseLayers(self.nodes[edge.fromNr], newNode)
 
-    # TODO: implement :)
-    def model(self,data):
+    # Implements the probabilistic forward model for the SVI optimizer
+    def model(self, data):
+        # Get the nodes layer allocation for update sequencing
         layers = self.getLayers()
 
-        inputs = []
-        functions = []
-        for node in self.nodes:
-            inputs.append(0)
-
-        # Loop through all but the last layer
+        # Loop through all but the last layer, as this one will be uniquely sampled with our data
         for i, layer in enumerate(layers):
+            # Skip layer if it is the last
             if (i == len(layers) - 1):
                 break
-            # For each node in the layer
+            # For each node in the layer calculate the output and distribute it to the other nodes
             for nodeNr in layer:
-                # Calculate the output and distribute it to the other nodes
-                # TODO: dont sample if its a deterministic function (relu or multiplication)
-                # TODO: Implement adding edges with allocation number
-                output = pyro.sample(str(nodeNr), self.nodes[nodeNr].function())
-                for outputValue, nodeNr2 in zip(output,self.nodes[nodeNr].outputtingTo):
+                # Calculate the output
+                if self.nodes[nodeNr].type != NodeType.Relu and self.nodes[nodeNr].type != NodeType.Multiplication:
+                    output = pyro.sample(str(nodeNr), self.nodes[nodeNr].function())
+                else:
+                    output = self.nodes[nodeNr].function()
+
+                # Distribute weighted output to other nodes
+                for nodeNr2 in self.nodes[nodeNr].outputtingTo:
                     for edge in self.edges:
                         if(edge.fromNr == nodeNr and edge.toNr == nodeNr2):
-                            self.nodes[nodeNr2].inputs.append([outputValue * edge.weight, edge.allocationNr])
+                            if self.nodes[nodeNr].type != NodeType.Dirichlet:
+                                self.nodes[nodeNr2].inputs.append([output * edge.weight, edge.toClass])
+                            else:
+                                self.nodes[nodeNr2].inputs.append([output[edge.fromClass] * edge.weight, edge.toClass])
 
+        # Sample the last layers nodes with our data
         for nodeNr in layers[len(layers) - 1]:
             pyro.sample("obs", self.nodes[nodeNr].function(), obs=data)
 
@@ -134,7 +147,8 @@ class ProbabilisticGenome(Genome.Genome):
         g.fitness = self.fitness
         return g
 
-    def increaseLayers(self,fromNode, toNode):
+    # Update the nodes layerings
+    def increaseLayers(self, fromNode, toNode):
         if(fromNode.layer >= toNode.layer):
             toNode.layer = fromNode.layer + 1
             for nodeNr in toNode.outputtingTo:
