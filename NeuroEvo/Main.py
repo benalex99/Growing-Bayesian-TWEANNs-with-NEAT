@@ -6,9 +6,8 @@ from NeuroEvo.Optimizers.NEAT.NEAT import NEAT
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 from NeuroEvo.Optimizers.QLearner.QLearner import QPolicy
 from NeuroEvo.Optimizers.Trainer import Trainer
-from NeuroEvo.NeuralNetwork.UnclassifiedExperiments.chess_questionmark_.myChess import myChess
 import NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPEnvironment as Env
-from  pyro.distributions import *
+from pyro.distributions import *
 import torch
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPCategoricalAgent import DP as DPC
@@ -16,7 +15,7 @@ from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPExample import DP as 
 
 
 def neatTest():
-    optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
+    optim = NEAT(iterations=1000000000000, populationSize=400, batchSize=200, episodeDur=400, showProgress=(1, 1000))
     # env = GymEnv('CartPole-v0')
     # env = GymEnv('MountainCar-v0')
     env = GymEnv('LunarLander-v2')
@@ -36,10 +35,12 @@ def Qlearning():
     qLearning = QPolicy('LunarLander-v2')
     qLearning.run(100000)
 
+
 def BayesStuff():
     dwbnn = DWBNN(layers=[(1, 2)], weightCount=5)
     for _ in range(10):
         print(dwbnn([0]))
+
 
 def nnToGenome():
     genome = NEATGenome(5, 1)
@@ -50,31 +51,33 @@ def nnToGenome():
     genome.weightsFromNN(nn)
     time.sleep(1000)
 
+
 def speciationTest():
     avgSpecies = 0
-    iter = 10
+    iter = 500
     for x in range(iter):
         genomes = []
         genome = NEATGenome(5, 1)
+        genome.fitness = random.randint(-10, 10)
         genomes.append(genome)
         optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
 
-        for i in range(20000):
+        for i in range(50):
             genomeN = genomes[random.randint(0, len(genomes) - 1)].copy()
             genomeN.mutate(i)
+            genomeN.fitness = random.randint(-50, 50)
             genomes.append(genomeN)
 
-        optim.speciation(genomes, 0.5, 0.5, 1, 8)
+        optim.speciation(genomes, 1, 3, 5, 5)
         print(len(optim.species))
         avgSpecies += len(optim.species)
-    print("Average number of Species:" + str(avgSpecies/iter))
+    print("Average number of Species:" + str(avgSpecies / iter))
 
 
 # nnToGenome()
 # Testing.test()
 # speciationTest()
-# neatTest()
+neatTest()
 # DPC.test()
 
 # print(Categorical(torch.Tensor([1])).sample([1]))
-yo = myChess()
