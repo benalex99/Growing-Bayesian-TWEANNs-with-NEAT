@@ -1,4 +1,5 @@
 import copy
+import math
 import random
 import time
 
@@ -10,17 +11,19 @@ class NEAT:
     population: list
 
     def __init__(self, iterations, maxPopSize, batchSize, episodeDur, showProgress=(0, 0), excessImp=0.5,
-                 disjointImp=0.5, weightImp=1, inclusionThreshold=2):
+                 disjointImp=0.5, weightImp=1, inclusionThreshold=5):
         """
 
-        Args:
-            population (list): All Genomes
+        iterations (int):
+            maxPopSize (int):
+            batchSize (int):
+            episodeDur (int):
+            showProgress int, int:
             excessImp (float): The Importance of all Excess Genes within two Genomes
             disjointImp (float): The Importance of all Disjoint Genes within two Genomes
             weightImp (float): The Importance of the Weight difference between two Genomes
             inclusionThreshold (float): The Range where the Delta of an Genome to the compare Genome should be appended
                                         to the Species of the compare Genome
-            species (list): All Genomes in the population clustered in species
 
         Returns:
             Deine Mudda!
@@ -64,7 +67,8 @@ class NEAT:
             counts = []
             for speciesEntry in self.species:
                 counts.append(len(speciesEntry))
-            print("Population Size: " + str(len(self.population)))
+            print("Batch Size: " + str(len(self.population)))
+            print("Population Size: " + str(len(self.population)+sum(counts)))
             print("Species: " + str(len(self.species)))
             print("Species Sum: " + str(sum(counts)))
             print("Species counts: " + str(counts) + "\n")
@@ -74,15 +78,30 @@ class NEAT:
         # Return the best gene from the population
         return self.bestGene()
 
+    def debug(self):
+        counts = []
+        for speciesEntry in self.species:
+            counts.append(len(speciesEntry))
+        print("Population Size: " + str(len(self.population)))
+        print("Species: " + str(len(self.species)))
+        print("Species Sum: " + str(sum(counts)))
+        print("Species counts: " + str(counts) + "\n")
+
     def murderGenomes(self):
         """
 
         :return:
         """
 
+        counts = []
+        for speciesEntry in self.species:
+            counts.append(len(speciesEntry))
+        count = sum(counts)
+
         self.population.sort(key=lambda x: x.adjustedFitness, reverse=True)
-        while len(self.population) > self.maxPopSize:
+        while count > self.maxPopSize:
             genome = self.population.pop(len(self.population) - 1)
+            count -= 1
             for speciesEntry in self.species:
                 if speciesEntry.__contains__(genome):
                     if len(speciesEntry) > 1:
@@ -125,13 +144,19 @@ class NEAT:
         """
         summedFitnesses = self.sumFitnessValue()
         mutationNumbers = []
-        for index, fitness in enumerate(summedFitnesses):
-            mutationNumbers.append(fitness)
-            mutationNumbers[index] *= self.batchSize / max(sum(summedFitnesses),1)
-            mutationNumbers[index] = int(mutationNumbers[index])
+        if(sum(summedFitnesses) > 0):
+            for index, fitness in enumerate(summedFitnesses):
+                mutationNumbers.append(fitness)
+                mutationNumbers[index] *= self.batchSize / sum(summedFitnesses)
+                mutationNumbers[index] = math.floor(mutationNumbers[index])
+        else:
+            for index, fitness in enumerate(summedFitnesses):
+                mutationNumbers.append(fitness)
+                mutationNumbers[index] *= self.batchSize / len(summedFitnesses)
+                mutationNumbers[index] = math.floor(mutationNumbers[index])
 
         # Randomly allocate mutations that were lost due to rounding
-        for _ in range(self.batchSize - sum(mutationNumbers)):
+        while self.batchSize > sum(mutationNumbers):
             index = random.randint(0, len(self.species) - 1)
             mutationNumbers[index] += 1
 
@@ -181,8 +206,10 @@ class NEAT:
                 if firstGenome.fitness == secondGenome.fitness:
                     # if the receiving or sending node does not exist, add it
                     # TODO: Adding redundant nodes?
-                    while edge.toNr >= len(fitterGenome.nodes) or edge.fromNr >= len(fitterGenome.nodes):
-                        fitterGenome.nodes.append(NodeGene(nodeNr=len(fitterGenome.nodes)))
+                    # while edge.toNr >= len(fitterGenome.nodes) or edge.fromNr >= len(fitterGenome.nodes):
+                    #     fitterGenome.nodes.append(NodeGene(nodeNr=len(fitterGenome.nodes)))
+                    if edge.toNr >= len(fitterGenome.nodes) or edge.fromNr >= len(fitterGenome.nodes):
+                        continue
                     # Check if the receiving neuron is not in a lower or equal layer
                     # And if the connection already exists
                     # TODO: Nodes has standard 0 layer assignment
@@ -204,15 +231,13 @@ class NEAT:
         Returns:
             None
         """
-        compareGenome = self.population[0]
-        if len(self.species) == 0:
-            self.species.append([compareGenome])
 
+        newSpecies = []
         # Reassign Species representatives
         for species in self.species:
             genome = species[random.randint(0, len(species) - 1)]
-            species.clear()
-            species.append(genome)
+            newSpecies.append([genome])
+        self.species = newSpecies
 
         # The compare Genome to specify if the Genome should be in the same Species or create a new Species
         for index, genome in enumerate(self.population):
@@ -295,18 +320,20 @@ class NEAT:
             return excessGenes, disjointGenes, avgWeight
 
         for index, edge in enumerate(secondGenome.edges):
-            if not firstGenome.edges[min(index, len(firstGenome.edges) - 1)].hMarker == edge.hMarker:
-                if edge.hMarker <= firstGenome.edges[len(firstGenome.edges) - 1].hMarker:
-                    disjointGenes += 1
+            try:
+                if not firstGenome.edges[index].hMarker == edge.hMarker:
+                    if edge.hMarker <= firstGenome.edges[len(firstGenome.edges) - 1].hMarker:
+                        disjointGenes += 1
+                    else:
+                        excessGenes += 1
                 else:
-                    excessGenes += 1
-            else:
-                # Defines the average Weight of matching Gene
-                if not index > len(firstGenome.edges) - 1:
-                    avgWeight += abs(edge.weight - firstGenome.edges[index].weight)
-                    if not firstGenome.edges[min(index + 1, len(firstGenome.edges) - 1)].hMarker \
-                           == edge.hMarker:
-                        avgWeight = avgWeight / (index + 1)
+                    # Defines the average Weight of matching Gene
+                    if not index > len(firstGenome.edges) - 1:
+                        avgWeight += abs(edge.weight - firstGenome.edges[index].weight)
+                        if not firstGenome.edges[index + 1].hMarker == edge.hMarker:
+                            avgWeight = avgWeight / (index + 1)
+            except IndexError:
+                pass
 
         for indexEdges, edge in enumerate(firstGenome.edges):
             if not edge.hMarker == secondGenome.edges[min(indexEdges, len(secondGenome.edges) - 1)].hMarker:
@@ -325,8 +352,9 @@ class NEAT:
              None
         """
         fitnesses = []
-        for genome in self.population:
-            fitnesses.append(genome.fitness)
+        for specie in self.species:
+            for genome in specie:
+                fitnesses.append(genome.fitness)
 
         for entrySpecies in self.species:
             for genome in entrySpecies:
@@ -339,9 +367,16 @@ class NEAT:
         Returns:
             NEATGenome: Returns the Genome with the best Fitness Value
         """
+        allGenomes = []
+        for genome in self.population:
+            allGenomes.append(genome)
+        for specie in self.species:
+            for genome in specie:
+                allGenomes.append(genome)
+
         # Sorts the Population by the Genome with the highest Fitness Value
-        self.population.sort(key=lambda x: x.fitness, reverse=True)
-        return self.population[0]
+        allGenomes.sort(key=lambda x: x.fitness, reverse=True)
+        return allGenomes[0]
 
     @staticmethod
     def visualize(gene, env, duration, useDone=True, seed=0):

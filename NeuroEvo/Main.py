@@ -15,7 +15,7 @@ from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPExample import DP as 
 
 
 def neatTest():
-    optim = NEAT(iterations=1000000000000, maxPopSize=200, batchSize=300, episodeDur=400, showProgress=(1, 1000))
+    optim = NEAT(iterations=1000000000000, maxPopSize=10, batchSize=20, episodeDur=400, showProgress=(1, 10))
     # env = GymEnv('CartPole-v0')
     # env = GymEnv('MountainCar-v0')
     env = GymEnv('LunarLander-v2')
