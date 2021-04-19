@@ -9,7 +9,7 @@ from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 class NEAT:
     population: list
 
-    def __init__(self, iterations, populationSize, batchSize, episodeDur, showProgress=(0, 0), excessImp=0.5,
+    def __init__(self, iterations, maxPopSize, batchSize, episodeDur, showProgress=(0, 0), excessImp=0.5,
                  disjointImp=0.5, weightImp=1, inclusionThreshold=2):
         """
 
@@ -26,7 +26,7 @@ class NEAT:
             Deine Mudda!
         """
         self.population = []
-        self.populationSize = populationSize
+        self.maxPopSize = maxPopSize
         self.species = []
         self.iterations = iterations
         self.batchSize = batchSize
@@ -81,12 +81,10 @@ class NEAT:
         """
 
         self.population.sort(key=lambda x: x.adjustedFitness, reverse=True)
-        while len(self.population) > self.populationSize:
+        while len(self.population) > self.maxPopSize:
             genome = self.population.pop(len(self.population) - 1)
             for speciesEntry in self.species:
-                print("a")
                 if speciesEntry.__contains__(genome):
-                    print("b")
                     if len(speciesEntry) > 1:
                         for genomeEntry in speciesEntry:
                             genomeEntry.adjustedFitness *= len(speciesEntry) / (len(speciesEntry) - 1)
@@ -218,23 +216,26 @@ class NEAT:
 
         # The compare Genome to specify if the Genome should be in the same Species or create a new Species
         for index, genome in enumerate(self.population):
-            if not (genome == compareGenome):
-                speciesFound = False
+            speciesFound = False
 
-                # Checks the delta value for the representative of the species
-                for speciesIndex, species in enumerate(self.species):
-                    compareGenome = species[0]
-                    if not (genome == compareGenome):
-                        # Defines the number of Excess and Disjoint Genes and the average Weight difference
-                        deltaValue = self.deltaValue(genome, compareGenome)
+            # Checks the delta value for the representative of the species
+            for speciesIndex, species in enumerate(self.species):
+                compareGenome = species[0]
+                if not (genome == compareGenome):
+                    # Defines the number of Excess and Disjoint Genes and the average Weight difference
+                    deltaValue = self.deltaValue(genome, compareGenome)
 
-                        # Assign Genome to first matching Species
-                        if deltaValue < self.inclusionThreshold:
-                            speciesFound = True
-                            species.append(genome)
-                            break
-                if not speciesFound:
-                    self.species.append([genome])
+                    # Assign Genome to first matching Species
+                    if deltaValue < self.inclusionThreshold:
+                        speciesFound = True
+                        species.append(genome)
+                        break
+                else:
+                    speciesFound = True
+                    break
+
+            if not speciesFound:
+                self.species.append([genome])
 
     @staticmethod
     def setFactorN(firstGenomeEdges, secondGenomeEdges):
