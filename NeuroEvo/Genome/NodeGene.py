@@ -31,4 +31,4 @@ class NodeGene:
                + " Layer: " + str(self.layer) \
                + " Outputs to: " \
                + str(self.outputtingTo)  + " "\
-               + "NodeType: " + nodeType + "\n"
+               + "NodeType: " + nodeType

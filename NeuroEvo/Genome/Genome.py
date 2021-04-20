@@ -202,12 +202,32 @@ class Genome():
         return layerGroups
 
     def copy(self):
-        g = Genome(0,0)
-        g.inputSize = self.inputSize
-        g.outputSize = self.outputSize
-        g.maxLayer = self.maxLayer
+        pass
 
-        g.edges = copy.deepcopy(self.edges)
-        g.nodes = copy.deepcopy(self.nodes)
+    def updateLayers(self):
+        for edge in self.edges:
+            self.increaseLayers(self.nodes[edge.fromNr],self.nodes[edge.toNr])
 
-        return g
+        maxLayer = 0
+        for node in self.nodes:
+            maxLayer = max(maxLayer, node.layer)
+
+        for node in self.nodes:
+            if node.output:
+                node.layer = maxLayer
+
+    def increaseLayers(self,fromNode, toNode):
+        if(fromNode.layer >= toNode.layer):
+            toNode.layer = fromNode.layer + 1
+            for nodeNr in toNode.outputtingTo:
+                self.increaseLayers(toNode, self.nodes[nodeNr])
+            self.maxLayer = max(toNode.layer, self.maxLayer)
+
+    def __repr__(self):
+        str = "nodes: \n"
+        for node in self.nodes:
+            str += node.__repr__() + "\n"
+        str += "edges: \n"
+        for edge in self.edges:
+            str += edge.__repr__() + "\n"
+        return str

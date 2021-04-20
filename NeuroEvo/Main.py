@@ -1,6 +1,8 @@
 import random
 import time
 
+import matplotlib.pyplot as plt
+import numpy as np
 from NeuroEvo.Environments.GymEnv import GymEnv
 from NeuroEvo.Optimizers.NEAT.NEAT import NEAT
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
@@ -12,6 +14,8 @@ import torch
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPCategoricalAgent import DP as DPC
 from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPExample import DP as DPE
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticGenome import ProbabilisticGenome
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticNEAT import ProbabilisticNEAT
 
 
 def neatTest():
@@ -73,11 +77,32 @@ def speciationTest():
         avgSpecies += len(optim.species)
     print("Average number of Species:" + str(avgSpecies / iter))
 
+def generativeModelTest():
+
+    genome = ProbabilisticGenome(5, 2)
+    for i in range(10):
+        genome.mutate(i)
+    print(genome.nodeStats())
+    genome.visualize()
+    plt.pause(20)
+    # genome.updateLayers()
+    # print(genome)
+
+    data = genome.generate(np.ones((5,5)))
+    print(data)
+
+def probNeatTest():
+    optim = ProbabilisticNEAT(iterations=1000000000000, maxPopSize=10, batchSize=20, episodeDur=400, showProgress=(1, 100))
+    env = GymEnv('LunarLander-v2')
+    genome = ProbabilisticGenome(env.inputs(), env.outputs())
+    optim.run(genome, env)
+
 
 # nnToGenome()
 # Testing.test()
 # speciationTest()
-neatTest()
+# neatTest()
 # DPC.test()
 
-# print(Categorical(torch.Tensor([1])).sample([1]))
+generativeModelTest()
+# probNeatTest()

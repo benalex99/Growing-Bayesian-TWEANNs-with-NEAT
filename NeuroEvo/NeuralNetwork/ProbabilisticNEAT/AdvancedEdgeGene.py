@@ -11,7 +11,7 @@ class AdvancedEdgeGene(EdgeGene):
         self.enabled = False
 
     def __deepcopy__(self, memodict={}):
-        return AdvancedEdgeGene(self.fromNr, self.toNr, self.weight, self.enabled, self.hMarker, self.innerInput, self.innerOutput)
+        return AdvancedEdgeGene(self.fromNr, self.toNr, self.weight, self.enabled, self.hMarker, self.toClass, self.fromClass)
 
     def __repr__(self):
         return str(self.fromNr) + " " + str(self.toNr) + " " + str(self.weight) + " " + str(self.enabled)

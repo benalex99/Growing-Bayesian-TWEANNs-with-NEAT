@@ -29,7 +29,7 @@ class Visualizer:
     # creates a graph with a given list 
     # nx.draw_networkx(G) - plots the graph 
     # plt.show() - displays the graph 
-    def visualize(self, ion= True):
+    def visualize(self, ion= True, labels = None):
         plt.cla()
         if(ion):
             if (not plt.isinteractive()):
@@ -38,7 +38,9 @@ class Visualizer:
             if (plt.isinteractive()):
                 plt.ioff()
         pos = nx.get_node_attributes(self.G, 'pos')
-
-        nx.draw(self.G, pos)
+        if labels == None:
+            nx.draw(self.G, pos, with_labels = True)
+        else:
+            nx.draw(self.G, pos, labels=labels, with_labels=True)
         plt.show()
         plt.pause(0.001)

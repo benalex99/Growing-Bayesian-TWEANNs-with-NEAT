@@ -66,6 +66,7 @@ class DP():
         with pyro.plate("mu_plate", self.T):
             mu = pyro.sample("mu", MultivariateNormal(torch.zeros(2), 5 * torch.eye(2)))
 
+
         # Generate cluster assignments based on their weights
         # Sample data points from the assigned clusters
         with pyro.plate("data", self.N):
