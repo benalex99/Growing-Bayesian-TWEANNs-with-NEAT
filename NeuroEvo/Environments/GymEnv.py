@@ -33,7 +33,6 @@ class GymEnv:
             genome.fitness = cumReward
         print("Classifying took: " + str(cumTime))
 
-
     def finalTest(self, genome, seed= 0):
         nn = genome.toNN()
         self.env.seed(seed)

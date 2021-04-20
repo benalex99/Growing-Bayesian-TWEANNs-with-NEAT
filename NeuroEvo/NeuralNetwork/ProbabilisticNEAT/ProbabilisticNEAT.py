@@ -195,7 +195,8 @@ class ProbabilisticNEAT:
 
         # Iterates through the Genome with the lower Fitness Score to carry over weights
         for index, edge in enumerate(weakerGenome.edges):
-
+            if len(fitterGenome.edges) == 0:
+                break
             if edge.hMarker == fitterGenome.edges[min(index, len(fitterGenome.edges) - 1)].hMarker and not disjoint:
                 if random.randint(0, 1) < 1:
                     # Randomly assign one of either genomes weights

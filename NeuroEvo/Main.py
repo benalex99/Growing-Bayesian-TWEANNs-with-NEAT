@@ -34,17 +34,14 @@ def neatTest():
     gg, score = Trainer.run(optim, env)
     gg.visualize(ion=False)
 
-
 def Qlearning():
     qLearning = QPolicy('LunarLander-v2')
     qLearning.run(100000)
-
 
 def BayesStuff():
     dwbnn = DWBNN(layers=[(1, 2)], weightCount=5)
     for _ in range(10):
         print(dwbnn([0]))
-
 
 def nnToGenome():
     genome = NEATGenome(5, 1)
@@ -54,7 +51,6 @@ def nnToGenome():
     nn = genome.toNN()
     genome.weightsFromNN(nn)
     time.sleep(1000)
-
 
 def speciationTest():
     avgSpecies = 0
@@ -85,15 +81,45 @@ def generativeModelTest():
     print(genome.nodeStats())
     genome.visualize()
     plt.pause(20)
-    # genome.updateLayers()
-    # print(genome)
 
     data = genome.generate(np.ones((5,5)))
     print(data)
 
+class VariableEnv:
+    def __init__(self, inputs = 1, outputs = 1, mutations = 10, datapointCount = 1000):
+        generativeModel = ProbabilisticGenome(inputs, outputs)
+        for i in range(mutations):
+            generativeModel.mutate(i)
+        self.inputCount = inputs
+        self.outputCount = outputs
+        self.model = generativeModel
+        self.input = torch.ones(inputs, datapointCount)
+        self.data = torch.Tensor(self.model.generate(self.input))
+
+    def test(self, population, duration, seed):
+        for genome in population:
+            predictions = torch.Tensor(genome.generate(self.input))
+            genome.fitness = -self.mse_loss(predictions, self.data)
+
+    def mse_loss(self, input, target):
+        return torch.sum((input - target) ** 2)
+
+    def inputs(self):
+        return self.inputCount
+
+    def outputs(self):
+        return self.outputCount
+
+    def visualize(self, gene, duration, useDone=None, seed=None):
+        gene.visualize()
+        plt.pause(duration/100)
+        self.model.visualize()
+        plt.pause(duration/100)
+
 def probNeatTest():
-    optim = ProbabilisticNEAT(iterations=1000000000000, maxPopSize=10, batchSize=20, episodeDur=400, showProgress=(1, 100))
-    env = GymEnv('LunarLander-v2')
+    optim = ProbabilisticNEAT(iterations=1000000000000, maxPopSize=200, batchSize=200, episodeDur=400, showProgress=(1, 100))
+    #env = GymEnv('LunarLander-v2')
+    env = VariableEnv(inputs=2, outputs=3, mutations=100)
     genome = ProbabilisticGenome(env.inputs(), env.outputs())
     optim.run(genome, env)
 
@@ -104,5 +130,5 @@ def probNeatTest():
 # neatTest()
 # DPC.test()
 
-generativeModelTest()
-# probNeatTest()
+# generativeModelTest()
+probNeatTest()

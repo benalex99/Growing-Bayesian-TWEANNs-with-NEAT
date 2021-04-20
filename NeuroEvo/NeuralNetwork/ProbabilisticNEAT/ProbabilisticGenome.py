@@ -10,6 +10,7 @@ from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.AdvancedNodeGene import NodeType
 import torch
 import pyro
 import numpy as np
+from pyro.distributions import *
 
 
 class ProbabilisticGenome(Genome.Genome):
@@ -38,7 +39,8 @@ class ProbabilisticGenome(Genome.Genome):
             return 1
 
         # Choose the type of mutation and execute it
-        randomMutate = random.randint(0, 2)
+        # randomMutate = random.randint(0, 2)
+        randomMutate = Categorical(torch.Tensor([0.6,0.3,0.1])).sample([1])[0]
         if randomMutate == 0:
             self.addEdge(hMarker)
             return 1
@@ -342,6 +344,7 @@ class ProbabilisticGenome(Genome.Genome):
                 nodes.append(node)
                 parents.append([])
 
+        edgeLabels = {}
         for edge in self.edges:
             if(edge.enabled):
                 G.addEdge(edge.fromNr, edge.toNr)

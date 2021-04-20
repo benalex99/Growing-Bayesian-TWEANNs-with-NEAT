@@ -13,13 +13,15 @@ class Visualizer:
         # visual is a list which stores all
         # the set of edges that constitutes a 
         # graph
-        self.G = nx.DiGraph()
+        # self.G = nx.DiGraph()
+        self.G = nx.MultiGraph()
+
 
 
     # addEdge function inputs the vertices of an
     # edge and appends it to the visual list
     def addEdge(self, a, b):
-        self.G.add_edge(a,b)
+        self.G.add_edge(a,b, connectionstyle='arc3, rad = 0.1')
 
     def addNode(self, nodeNr, pos = (0,0), size = 0):
         self.G.add_node(nodeNr, pos = pos, size = size)
@@ -29,7 +31,7 @@ class Visualizer:
     # creates a graph with a given list 
     # nx.draw_networkx(G) - plots the graph 
     # plt.show() - displays the graph 
-    def visualize(self, ion= True, labels = None):
+    def visualize(self, ion= True, labels = None, edgeLabels=None):
         plt.cla()
         if(ion):
             if (not plt.isinteractive()):
@@ -39,8 +41,14 @@ class Visualizer:
                 plt.ioff()
         pos = nx.get_node_attributes(self.G, 'pos')
         if labels == None:
-            nx.draw(self.G, pos, with_labels = True)
+            nx.draw_networkx_nodes(self.G, pos)
         else:
-            nx.draw(self.G, pos, labels=labels, with_labels=True)
+            nx.draw_networkx_nodes(self.G, pos)
+        nx.draw_networkx_labels(self.G, pos, labels=labels)
+        # if edgeLabels != None:
+        # edge_labels = dict([((n1, n2), f'{n1}->{n2}')
+        #                     for n1, n2 in self.G.edges])
+        # nx.draw_networkx_edge_labels(self.G, pos, edge_labels=edge_labels)
+        nx.draw_networkx_edges(self.G, pos, connectionstyle='arc3, rad = 0.1')
         plt.show()
         plt.pause(0.001)
