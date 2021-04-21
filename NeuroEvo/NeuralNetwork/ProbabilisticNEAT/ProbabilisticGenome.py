@@ -88,6 +88,7 @@ class ProbabilisticGenome(Genome.Genome):
                 newEdge.fromClass = random.randint(0, self.nodes[fromI].classCount - 1)
 
             # If receiving nodes are dirichlet or categorical, specify the target classes
+            # TODO: Whether a new class is created could be determined by the polya urn model
             if self.nodes[toI].type == NodeType.Dirichlet or self.nodes[toI].type == NodeType.Categorical:
                 newEdge.toClass = self.nodes[toI].classCount
 

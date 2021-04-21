@@ -13,7 +13,7 @@ from pyro.distributions import *
 import torch
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPCategoricalAgent import DP as DPC
-from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPExample import DP as DPE
+from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPExampleUnivariate import DP as DPE
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticGenome import ProbabilisticGenome
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticNEAT import ProbabilisticNEAT
 
@@ -75,12 +75,12 @@ def speciationTest():
 
 def generativeModelTest():
 
-    genome = ProbabilisticGenome(5, 2)
+    genome = ProbabilisticGenome(2, 2)
     for i in range(10):
         genome.mutate(i)
     print(genome.nodeStats())
     genome.visualize()
-    plt.pause(20)
+    plt.pause(10000)
 
     data = genome.generate(np.ones((5,5)))
     print(data)
@@ -128,7 +128,7 @@ def probNeatTest():
 # Testing.test()
 # speciationTest()
 # neatTest()
-# DPC.test()
+DPE.test()
 
 # generativeModelTest()
-probNeatTest()
+# probNeatTest()

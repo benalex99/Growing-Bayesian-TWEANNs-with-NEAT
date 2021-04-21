@@ -8,13 +8,14 @@ from pyro.optim import Adam
 from pyro.distributions import *
 from pyro.infer import Trace_ELBO, SVI
 from tqdm import tqdm
-
+from scipy.stats import norm
 
 def data():
-    data = torch.cat((MultivariateNormal(-8 * torch.ones(2), torch.eye(2)).sample([50]),
-                      MultivariateNormal(8 * torch.ones(2), torch.eye(2)).sample([50]),
-                      MultivariateNormal(torch.tensor([1.5, 2]), torch.eye(2)).sample([50]),
-                      MultivariateNormal(torch.tensor([-0.5, 1]), torch.eye(2)).sample([50])))
+    count = 1000
+    data = torch.cat((Normal(-8, 1).sample([count]),
+                      Normal(8, 1).sample([count]),
+                      Normal(2, 1).sample([count]),
+                      Normal(-0.5, 1).sample([count])))
     return data
 
 class DP():
@@ -64,14 +65,14 @@ class DP():
 
         # Sample cluster means from a multivariate normal with means 0,0 and variances 5,5
         with pyro.plate("mu_plate", self.T):
-            mu = pyro.sample("mu", MultivariateNormal(torch.zeros(2), 5 * torch.eye(2)))
+            mu = pyro.sample("mu", Normal(1, 5))
 
 
         # Generate cluster assignments based on their weights
         # Sample data points from the assigned clusters
         with pyro.plate("data", self.N):
             z = pyro.sample("z", Categorical(self.mix_weights(beta)))
-            pyro.sample("obs", MultivariateNormal(mu[z], torch.eye(2)), obs=data)
+            pyro.sample("obs", Normal(mu[z], 1), obs=data)
 
 
     def guide(self, data):
@@ -86,7 +87,7 @@ class DP():
         # Cluster probability prior from uniform
         kappa = pyro.param('kappa', lambda: Uniform(0, 2).sample([T-1]), constraint=constraints.positive)
         # Cluster mean prior from multivariate
-        tau = pyro.param('tau', lambda: MultivariateNormal(torch.zeros(2), 3 * torch.eye(2)).sample([T]))
+        tau = pyro.param('tau', lambda: Normal(1, 3).sample([T]))
         # Cluster assignment probability prior from dirichlet
         phi = pyro.param('phi', lambda: Dirichlet(1/T * torch.ones(T)).sample([N]), constraint=constraints.simplex)
 
@@ -96,7 +97,7 @@ class DP():
 
         # Sample cluster means
         with pyro.plate("mu_plate", T):
-            q_mu = pyro.sample("mu", MultivariateNormal(tau, torch.eye(2)))
+            q_mu = pyro.sample("mu", Normal(tau, 1))
 
         # Sample cluster assignments
         with pyro.plate("data", N):
@@ -130,25 +131,19 @@ class DP():
         # We make a point-estimate of our model parameters using the posterior means of tau and phi for the centers and weights
         Bayes_Centers_01, Bayes_Weights_01 = self.truncate(truncationFactor, pyro.param("tau").detach(), torch.mean(pyro.param("phi").detach(), dim=0))
 
-        pyro.set_rng_seed(0)
-        self.alpha = 1.5
-        truncationFactor = 0.1
-        self.train(1000)
-
-        # We make a point-estimate of our model parameters using the posterior means of tau and phi for the centers and weights
-        Bayes_Centers_15, Bayes_Weights_15 = self.truncate(truncationFactor, pyro.param("tau").detach(), torch.mean(pyro.param("phi").detach(), dim=0))
-
         plt.figure(figsize=(15, 5))
         plt.subplot(1, 2, 1)
-        plt.scatter(self.data[:, 0], self.data[:, 1], color="blue")
-        plt.scatter(Bayes_Centers_01[:, 0], Bayes_Centers_01[:, 1], color="red")
-        for center, weight in zip(Bayes_Centers_01, Bayes_Weights_01):
-            plt.annotate(str(weight.item()), center, color="green")
 
-        plt.subplot(1, 2, 2)
-        plt.scatter(self.data[:, 0], self.data[:, 1], color="blue")
-        plt.scatter(Bayes_Centers_15[:, 0], Bayes_Centers_15[:, 1], color="red")
-        for center, weight in zip(Bayes_Centers_15, Bayes_Weights_15):
-            plt.annotate(str(weight.item()), center, color="green")
+        print(self.data.tolist())
+        plt.hist(self.data.tolist(), bins= 100, color="blue", density=True)
+        print(Bayes_Centers_01)
+        print(Bayes_Weights_01)
+        for center, weight in zip(Bayes_Centers_01, Bayes_Weights_01):
+            xmin, xmax = plt.xlim()
+            x = np.linspace(xmin, xmax, 100)
+            p = norm.pdf(x, center, 1)
+            plt.plot(x, p, 'k', linewidth=2)
+            # plt.annotate(str(weight.item()), center, color="green")
+
         plt.tight_layout()
         plt.show()
