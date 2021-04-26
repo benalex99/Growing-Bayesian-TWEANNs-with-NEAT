@@ -2,6 +2,11 @@ import copy
 import math
 import random
 
+from pyro.infer import SVI, Trace_ELBO
+from tqdm import tqdm
+from pyro.distributions import *
+from pyro.optim import Adam
+
 from NeuroEvo.Genome.Visualizer import Visualizer
 from NeuroEvo.Genome import Genome
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT import AdvancedNodeGene
@@ -10,7 +15,6 @@ from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.AdvancedNodeGene import NodeType
 import torch
 import pyro
 import numpy as np
-from pyro.distributions import *
 
 
 class ProbabilisticGenome(Genome.Genome):
@@ -25,12 +29,12 @@ class ProbabilisticGenome(Genome.Genome):
 
         for i in range(outputSize):
             node = AdvancedNodeGene.AdvancedNodeGene(len(self.nodes),layer = 1, output = True)
+            node.type = NodeType.Gaussian
+            node.classCount = 0
             self.nodes.append(node)
 
         self.fitness = -math.inf
 
-    # TODO: Add "change output node type"
-    # TODO: Last layer nodes MUST be of distribution type
     # Mutate by adding an edge or node, or tweak a weight
     def mutate(self, hMarker):
         # If we have an empty network, the only option is to add an edge for throughput
@@ -40,16 +44,17 @@ class ProbabilisticGenome(Genome.Genome):
 
         # Choose the type of mutation and execute it
         # randomMutate = random.randint(0, 2)
-        randomMutate = Categorical(torch.Tensor([0.6,0.3,0.1])).sample([1])[0]
+        randomMutate = Categorical(torch.Tensor([0.7,0.2,0.1])).sample([1])[0]
         if randomMutate == 0:
             self.addEdge(hMarker)
             return 1
         elif randomMutate == 1:
             self.addNode(hMarker)
             return 3
-        else:
-            self.tweakWeight(1)
+        elif randomMutate == 2:
+            self.tweakWeight()
             return 0
+
 
     # Add an edge to connect two nodes
     def addEdge(self, hMarker, outNode = None):
@@ -88,18 +93,19 @@ class ProbabilisticGenome(Genome.Genome):
                 newEdge.fromClass = random.randint(0, self.nodes[fromI].classCount - 1)
 
             # If receiving nodes are dirichlet or categorical, specify the target classes
-            # TODO: Whether a new class is created could be determined by the polya urn model
+            # TODO: Whether a new class is created could be determined by the polya urn model?
             if self.nodes[toI].type == NodeType.Dirichlet or self.nodes[toI].type == NodeType.Categorical:
                 newEdge.toClass = self.nodes[toI].classCount
 
             # If the receiving node is a Gaussian that already has two connections, declare the connection invalid
             if self.nodes[toI].type == NodeType.Gaussian:
-                if self.nodes[toI].classCount == 2:
+                if self.nodes[toI].classCount >= 2:
                     invalid = True
                 else:
                     # If the gaussian does not yet have a variance input (default is 1), then declare the connection valid
                     # and assign the variance index
-                    newEdge.toClass = 1
+                    newEdge.toClass = self.nodes[toI].classCount
+                    self.nodes[toI].classCount += 1
                     invalid = False
             else:
                 invalid = False
@@ -132,9 +138,9 @@ class ProbabilisticGenome(Genome.Genome):
         self.specifiyEdge(edge, node, hMarker)
 
     # Tweak a random weight by adding Gaussian noise
-    def tweakWeight(self, weight):
+    def tweakWeight(self, variance=1):
         indexWeight = random.randint(0, len(self.edges)-1)
-        self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, weight)
+        self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, variance)
 
     # Add the incoming and outgoing edges to the newly added intervening Node
     def specifiyEdge(self, edge, newNode, hMarker):
@@ -175,44 +181,94 @@ class ProbabilisticGenome(Genome.Genome):
         layers = self.getLayers()
 
         # Splitting data into features and predictions
-        inputData = data[:self.inputSize, :]
-        outputData = data[self.inputSize:self.inputSize+self.outputSize, :]
+        inputData = data[0]
+        outputData = data[1]
 
-        for input, output in zip(inputData, outputData):
-
+        # for input, observation in zip(inputData, outputData):
+        with pyro.plate("data", len(outputData)):
             # Loop through all but the last layer, as this one will be uniquely sampled with our data
             for i, layer in enumerate(layers):
                 # If we are in the first layer, append our feature data to the inputs of the input nodes
                 if(i == 0):
                     for i2, nodeNr in enumerate(layer):
-                        self.nodes[nodeNr].inputs.append(input[i2])
+                        # print("InputData " + str(inputData[:,i2]))
+                        self.nodes[nodeNr].inputs.append(inputData[:,i2])
 
                 # If we are in the last layer, sample our output nodes predictions with our observations
                 if (i == len(layers) - 1):
-                    outputs = []
-                    for i, (outputPoint, nodeNr) in enumerate(zip(output, layer)):
-                        pyro.sample("obs_{}".format(i), self.nodes[nodeNr].function(), obs=outputPoint)
+                    for i, nodeNr in enumerate(layer):
+                        if len(self.nodes[nodeNr].inputs) == 0:
+                            self.nodes[nodeNr].inputs.append([torch.zeros(len(inputData)),0])
+                        pyro.sample("obs_{}".format(i), self.nodes[nodeNr].function(), obs=outputData[:,i])
+                    continue
 
                 # For each node in the layer calculate the output and distribute it to the other nodes
                 for nodeNr in layer:
                     # Calculate the output
                     if not self.nodes[nodeNr].input and self.nodes[nodeNr].type != NodeType.Relu and self.nodes[nodeNr].type != NodeType.Multiplication:
-                        output = pyro.sample("node" + str(nodeNr), self.nodes[nodeNr].function())
+                        output = pyro.sample("node " + str(nodeNr), self.nodes[nodeNr].function())
+                    else:
+                        output = self.nodes[nodeNr].function()
+                    # print("output " + str(output))
+
+                    # Distribute weighted output to other nodes
+                    for nodeNr2 in list(dict.fromkeys(self.nodes[nodeNr].outputtingTo)):
+                        for edge in self.edges:
+                            if edge.enabled:
+                                if(edge.fromNr == nodeNr and edge.toNr == nodeNr2):
+                                    if self.nodes[nodeNr].type != NodeType.Dirichlet:
+                                        # print("Inputting " + str(output * edge.weight))
+                                        self.nodes[nodeNr2].inputs.append([output * edge.weight, edge.toClass])
+                                    else:
+                                        self.nodes[nodeNr2].inputs.append([output[edge.fromClass] * edge.weight, edge.toClass])
+
+    # TODO: implement :)
+    def guide(self, data):
+        # Get the nodes layer allocation for update sequencing
+        layers = self.getLayers()
+
+        # Splitting data into features and predictions
+        inputData = data[0]
+        outputData = data[1]
+
+        # Sampling edge weights according to a normal prior
+        for edge in self.edges:
+            edge.weight = pyro.param("edge " + str(edge.fromNr) + " "
+                                     + str(edge.toNr) + " "
+                                     + str(edge.fromClass) + " "
+                                     + str(edge.toClass), lambda: Normal(0, 1).sample([1]))
+
+        # for input, output in zip(inputData, outputData):
+        with pyro.plate("data", len(outputData)):
+            # Loop through all but the last layer, as this one will be uniquely sampled with our data
+            for i, layer in enumerate(layers):
+                # If we are in the first layer, append our feature data to the inputs of the input nodes
+                if(i == 0):
+                    for i2, nodeNr in enumerate(layer):
+                        self.nodes[nodeNr].inputs.append(inputData[:,i2])
+
+                # If we are in the last layer, sample our output nodes predictions with our observations
+                if (i == len(layers) - 1):
+                    continue
+
+                # For each node in the layer calculate the output and distribute it to the other nodes
+                for nodeNr in layer:
+                    # Calculate the output
+                    if not self.nodes[nodeNr].input and self.nodes[nodeNr].type != NodeType.Relu and self.nodes[nodeNr].type != NodeType.Multiplication:
+                        output = pyro.sample("node " + str(nodeNr), self.nodes[nodeNr].function())
                     else:
                         output = self.nodes[nodeNr].function()
 
                     # Distribute weighted output to other nodes
                     for nodeNr2 in list(dict.fromkeys(self.nodes[nodeNr].outputtingTo)):
                         for edge in self.edges:
-                            if(edge.fromNr == nodeNr and edge.toNr == nodeNr2):
-                                if self.nodes[nodeNr].type != NodeType.Dirichlet:
-                                    self.nodes[nodeNr2].inputs.append([output * edge.weight, edge.toClass])
-                                else:
-                                    self.nodes[nodeNr2].inputs.append([output[edge.fromClass] * edge.weight, edge.toClass])
-
-    # TODO: implement :)
-    def guide(self):
-        pass
+                            if edge.enabled:
+                                if(edge.fromNr == nodeNr and edge.toNr == nodeNr2):
+                                    # Ignore the previous weight in optimization
+                                    if self.nodes[nodeNr].type != NodeType.Dirichlet:
+                                        self.nodes[nodeNr2].inputs.append([output * edge.weight, edge.toClass])
+                                    else:
+                                        self.nodes[nodeNr2].inputs.append([output[edge.fromClass] * edge.weight, edge.toClass])
 
     def copy(self):
         g = ProbabilisticGenome(0, 0)
@@ -263,50 +319,52 @@ class ProbabilisticGenome(Genome.Genome):
         # Get the nodes layer allocation for update sequencing
         layers = self.getLayers()
 
-        # Splitting data into features and predictions
+        # Looping over the inputData
         outputs = []
-        for input in inputData:
-            # Loop through all but the last layer, as this one will be uniquely sampled with our data
-            for i, layer in enumerate(layers):
-                # If we are in the first layer, append our feature data to the inputs of the input nodes
-                if(i == 0):
-                    for i2, nodeNr in enumerate(layer):
-                        self.nodes[nodeNr].inputs.append(input[i2])
+        # for input in inputData:
+        # Loop through all but the last layer, as this one will be uniquely sampled with our data
+        for i, layer in enumerate(layers):
+            # If we are in the first layer, append our feature data to the inputs of the input nodes
+            if(i == 0):
+                for i2, nodeNr in enumerate(layer):
+                    self.nodes[nodeNr].inputs.append(inputData[:,i2])
 
-                # If we are in the last layer, sample our output nodes predictions with our observations
-                if (i == len(layers) - 1):
-                    output = []
-                    for nodeNr in layer:
-                        if not self.nodes[nodeNr].input and self.nodes[nodeNr].type != NodeType.Relu and self.nodes[nodeNr].type != NodeType.Multiplication:
-                            y = self.nodes[nodeNr].function().sample([1])[0].tolist()
-                        else:
-                            y = self.nodes[nodeNr].function()
-                        output.append(y)
-                    outputs.append(output)
-
-                # For each node in the layer calculate the output and distribute it to the other nodes
+            # If we are in the last layer, sample our output nodes predictions with our observations
+            if (i == len(layers) - 1):
                 for nodeNr in layer:
-                    #print("NodeNr: " + str(nodeNr))
-                    # Calculate the output
-                    if self.nodes[nodeNr].type != NodeType.Relu and self.nodes[nodeNr].type != NodeType.Multiplication:
-                        output = self.nodes[nodeNr].function().sample([1]).tolist()[0]
+                    if len(self.nodes[nodeNr].inputs) == 0:
+                        self.nodes[nodeNr].inputs.append([torch.zeros(len(inputData)),0])
+                    if not self.nodes[nodeNr].input and self.nodes[nodeNr].type != NodeType.Relu and self.nodes[nodeNr].type != NodeType.Multiplication:
+                        y = self.nodes[nodeNr].function().sample([1])[0]
                     else:
-                        output = self.nodes[nodeNr].function()
-                    #print("Output: " + str(output))
-                    # Distribute weighted output to other nodes
-                    for nodeNr2 in self.nodes[nodeNr].outputtingTo:
-                        # Dirichlet distribution has a different output format and must be handled differently
-                        if self.nodes[nodeNr].type != NodeType.Dirichlet:
-                            for edge in self.edges:
-                                if(edge.fromNr == nodeNr and edge.toNr == nodeNr2):
-                                    self.nodes[nodeNr2].inputs.append([output * edge.weight, edge.toClass])
-                        else:
-                            for edge in self.edges:
-                                if(edge.fromNr == nodeNr and edge.toNr == nodeNr2):
-                                    if self.nodes[nodeNr].classCount > 1:
-                                        self.nodes[nodeNr2].inputs.append([output[edge.fromClass] * edge.weight, edge.toClass])
-                                    else:
-                                        self.nodes[nodeNr2].inputs.append([output[edge.fromClass] * edge.weight, edge.toClass])
+                        y = self.nodes[nodeNr].function()
+                    torch.reshape(y, (len(y), -1))
+                    outputs.append(y)
+                outputs = np.stack((outputs), axis=1)
+                outputs = torch.tensor(outputs)
+                continue
+
+            # For each node in the layer calculate the output and distribute it to the other nodes
+            for nodeNr in layer:
+                # Calculate the output
+                if self.nodes[nodeNr].type != NodeType.Relu and self.nodes[nodeNr].type != NodeType.Multiplication:
+                    output = self.nodes[nodeNr].function().sample([1])[0]
+                else:
+                    output = self.nodes[nodeNr].function()
+                # Distribute weighted output to other nodes
+                for nodeNr2 in list(dict.fromkeys(self.nodes[nodeNr].outputtingTo)):
+                    # Dirichlet distribution has a different output format and must be handled differently
+                    if self.nodes[nodeNr].type != NodeType.Dirichlet:
+                        for edge in self.edges:
+                            if(edge.fromNr == nodeNr and edge.toNr == nodeNr2):
+                                self.nodes[nodeNr2].inputs.append([output * edge.weight, edge.toClass])
+                    else:
+                        for edge in self.edges:
+                            if(edge.fromNr == nodeNr and edge.toNr == nodeNr2):
+                                if self.nodes[nodeNr].classCount > 1:
+                                    self.nodes[nodeNr2].inputs.append([output[edge.fromClass] * edge.weight, edge.toClass])
+                                else:
+                                    self.nodes[nodeNr2].inputs.append([output[edge.fromClass] * edge.weight, edge.toClass])
         return outputs
 
     def nodeStats(self):
@@ -316,6 +374,8 @@ class ProbabilisticGenome(Genome.Genome):
         relus = 0
         multiplications = 0
         for node in self.nodes:
+            if node.input:
+                continue
             if node.type == NodeType.Dirichlet:
                 dirichlets += 1
             if node.type == NodeType.Categorical:
@@ -345,12 +405,6 @@ class ProbabilisticGenome(Genome.Genome):
                 nodes.append(node)
                 parents.append([])
 
-        edgeLabels = {}
-        for edge in self.edges:
-            if(edge.enabled):
-                G.addEdge(edge.fromNr, edge.toNr)
-                parents[nodes.index(edge.toNr)].append(edge.fromNr)
-
         for y,layer in enumerate(groups):
             if(y == 0):
                 for x, node in enumerate(layer):
@@ -367,15 +421,77 @@ class ProbabilisticGenome(Genome.Genome):
                 for index in order:
                     nodePositions.append((y, -len(layer)/2 + index))
 
+
+        # Add nodes to network
         labels = {}
         for node, nodePos in zip(nodes, nodePositions):
             G.addNode(node, pos = nodePos)
             if(self.nodes[node].input):
                 labels[node] = "inp"
             else:
-                if(self.nodes[node].output):
-                    labels[node] = "outp"
-                else:
-                    labels[node] = str(self.nodes[node].type)
+                labels[node] = str(self.nodes[node].type)
+                if self.nodes[node].output:
+                    labels[node] = labels[node] + "\n out"
+                # Additional nodes for distributions for visualization
+                if self.nodes[node].type == NodeType.Dirichlet or self.nodes[node].type == NodeType.Categorical:
+                    for i in range(self.nodes[node].classCount):
+                        G.addNode(str(node) + " in " + str(i),
+                                  pos=(nodePos[0] -0.3,
+                                       nodePos[1]+ i*0.4/self.nodes[node].classCount - 0.1*(max(0, min(1,self.nodes[node].classCount-1)))))
+                        labels[str(node) + " in " + str(i)] = "c" + str(i)
 
-        G.visualize(ion= ion, labels=labels)
+                if self.nodes[node].type == NodeType.Dirichlet:
+                    for i in range(self.nodes[node].classCount):
+                        G.addNode(str(node) + " out " + str(i),
+                                  pos=(nodePos[0] +0.3,
+                                       nodePos[1]+ i*0.4/self.nodes[node].classCount - 0.1*(max(0, min(1,self.nodes[node].classCount-1)))))
+                        labels[str(node) + " out " + str(i)] = "c" + str(i)
+
+
+
+        edgeLabels = []
+        for edge in self.edges:
+            if(edge.enabled):
+                if self.nodes[edge.toNr].type == NodeType.Dirichlet or self.nodes[edge.toNr].type == NodeType.Categorical:
+                    G.addEdge(edge.fromNr, str(edge.toNr) + " in " + str(edge.toClass))
+                    G.addEdge(str(edge.toNr) + " in " + str(edge.toClass), edge.toNr)
+                    edgeLabels.append(((edge.fromNr, str(edge.toNr) + " in " + str(edge.toClass)), round(edge.weight, 3)))
+                else:
+                    if self.nodes[edge.fromNr].type == NodeType.Dirichlet:
+                        G.addEdge(edge.fromNr, str(edge.fromNr) + " out " + str(edge.fromClass))
+                        G.addEdge(str(edge.fromNr) + " out " + str(edge.fromClass), edge.toNr)
+                        edgeLabels.append(((str(edge.fromNr) + " out " + str(edge.fromClass), edge.toNr), round(edge.weight, 3)))
+                    else:
+                        G.addEdge(edge.fromNr, edge.toNr)
+                        edgeLabels.append(((edge.fromNr, edge.toNr), round(edge.weight, 3)))
+                parents[nodes.index(edge.toNr)].append(edge.fromNr)
+
+        G.visualize(ion= ion, labels=labels, edgeLabels=dict(edgeLabels))
+
+    def train(self, data, num_iterations, optim = Adam({"lr": 0.05}), loss= Trace_ELBO()):
+        svi = SVI(self.model, self.guide, optim, loss=loss)
+
+        pyro.set_rng_seed(0)
+        pyro.clear_param_store()
+
+        losses = []
+        torch.autograd.set_detect_anomaly(True)
+        for j in tqdm(range(num_iterations)):
+            loss = svi.step(data)
+            losses.append(loss)
+
+        print(pyro.get_param_store().keys())
+
+        for edge in self.edges:
+            edge.weight = pyro.param("edge " + str(edge.fromNr) + " "
+                                     + str(edge.toNr) + " "
+                                     + str(edge.fromClass) + " "
+                                     + str(edge.toClass)).detach().item()
+
+        return losses, losses[len(losses)-1]
+
+    def changeOutputType(self):
+        index = random.randint(self.inputSize, self.inputSize+self.outputSize-1)
+        if(self.nodes[index].classCount <= 2):
+            type = NodeType.random(output=True)
+            self.nodes[index].type = type

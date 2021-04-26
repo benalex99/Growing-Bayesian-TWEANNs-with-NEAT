@@ -14,7 +14,9 @@ class NodeType(Enum):
 
     # Returns a random node type according to a uniform prior
     @staticmethod
-    def random():
+    def random(output = True):
+        if output:
+            return NodeType(random.randint(3,4))
         return NodeType(random.randint(1,5))
 
     def __str__(self):
@@ -31,9 +33,9 @@ class AdvancedNodeGene(NodeGene):
 
     def function(self):
         if(self.input):
-            return self.inputs[0]
-        if(self.output):
-            return self.linear()
+            output = self.inputs[0]
+            self.inputs = []
+            return output
         if(self.type == NodeType.Relu):
             return self.relu()
         if(self.type == NodeType.Multiplication):
@@ -63,44 +65,56 @@ class AdvancedNodeGene(NodeGene):
 
     # Returns a Categorical distribution
     def categorical(self):
-        inputs = torch.zeros(len(self.inputs))
+        inputs = torch.zeros((self.classCount, len(self.inputs[0][0])))
         for input in self.inputs:
             # Parameter index: input[1]
             # Parameter value: input[0]
             inputs[input[1]] = input[0]
+
         # Negative numbers are not allowed in categoricals
         # So we offset all values to positive by subtracting the smallest number, preserving the inputs ratios
-        inputs -= min(min(inputs.clone()), 0)
+        inputs -= torch.minimum(
+            torch.min(inputs.clone(), dim=0).values,
+            torch.zeros(len(torch.min(inputs.clone(), dim=0).values)))
         # Normalize inputs to distribution probabilities
-        inputs = inputs / max(sum(inputs), 1)
-        # If all inputs are 0, set the probabilities to be uniform
-        if sum(inputs == 0):
-            inputs = torch.ones(len(self.inputs))/len(self.inputs)
+        inputs = inputs / torch.max(torch.sum(inputs, dim=0), torch.ones(len(torch.sum(inputs, dim=0))))
+
+        # If all inputs are 0, set the probabilities to be uniform TODO: check if this replaces the correct values
+        sums = torch.sum(inputs, dim=0)
+        for i, sum in enumerate(sums):
+            if sum==0:
+                inputs[:,i] = torch.ones(self.classCount)/self.classCount
+
         # Clear activation
         self.inputs = []
-
-        return Categorical(inputs)
+        return Categorical(inputs.T)
 
     # Returns a gaussian distribution
     def gaussian(self):
-        inputs = torch.ones(2)
+        inputs = torch.zeros(2, len(self.inputs[0][0]))
+
         for input in self.inputs:
             # Parameter index: input[1]
             # Parameter value: input[0]
             inputs[input[1]] = input[0]
+
+        # Gaussians variance may not be negative or zero, so we truncate it to be above a small value
+        inputs[1] = torch.maximum(
+            inputs[1].clone(),
+            torch.ones(len(inputs[1])) * 0.0000001)
+
         # Clear activation
         self.inputs = []
-        # Gaussians variance may not be negative or zero, so we truncate it to be above a small value
-        inputs[1] = max(inputs[1], 0.0000001)
+
         return Normal(inputs[0], inputs[1])
 
     # Returns a dirichlet distribution
     def dirichlet(self):
-        inputs = torch.zeros(len(self.inputs))
+        inputs = torch.zeros(self.classCount)
         for input in self.inputs:
             # Parameter index: input[1]
             # Parameter value: input[0]
-            inputs[input[1]] += input[0]
+            inputs[input[1]] = input[0]
 
         # The Dirichlet distribution may not receive parameter values smaller or equal to 0,
         # so we truncate the values to a small number
@@ -133,4 +147,5 @@ class AdvancedNodeGene(NodeGene):
                + "Function: " + str(self.type)
 
     def __deepcopy__(self, memodict={}):
-        return AdvancedNodeGene(self.nodeNr, self.layer, self.output, self.input, outputtingTo= self.outputtingTo.copy())
+        return AdvancedNodeGene(self.nodeNr, self.layer, self.output, self.input,
+                                outputtingTo= self.outputtingTo.copy(), type=self.type, classCount=self.classCount)

@@ -14,7 +14,7 @@ class Visualizer:
         # the set of edges that constitutes a 
         # graph
         # self.G = nx.DiGraph()
-        self.G = nx.MultiGraph()
+        self.G = nx.MultiDiGraph()
 
 
 
@@ -40,15 +40,18 @@ class Visualizer:
             if (plt.isinteractive()):
                 plt.ioff()
         pos = nx.get_node_attributes(self.G, 'pos')
+
         if labels == None:
             nx.draw_networkx_nodes(self.G, pos)
         else:
             nx.draw_networkx_nodes(self.G, pos)
+
         nx.draw_networkx_labels(self.G, pos, labels=labels)
-        # if edgeLabels != None:
-        # edge_labels = dict([((n1, n2), f'{n1}->{n2}')
-        #                     for n1, n2 in self.G.edges])
-        # nx.draw_networkx_edge_labels(self.G, pos, edge_labels=edge_labels)
-        nx.draw_networkx_edges(self.G, pos, connectionstyle='arc3, rad = 0.1')
+
+        nx.draw_networkx_edges(self.G, pos) #, connectionstyle='arc3, rad = 0.4')
+        if edgeLabels != None:
+            # edge_labels = dict([((n1, n2), f'{n1}->{n2}')
+            #                     for n1, n2 in self.G.edges])
+            nx.draw_networkx_edge_labels(self.G, pos, edge_labels=edgeLabels, font_size=8, alpha=0.5)
         plt.show()
         plt.pause(0.001)

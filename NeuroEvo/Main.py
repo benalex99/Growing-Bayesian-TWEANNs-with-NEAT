@@ -8,8 +8,8 @@ from NeuroEvo.Optimizers.NEAT.NEAT import NEAT
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 from NeuroEvo.Optimizers.QLearner.QLearner import QPolicy
 from NeuroEvo.Optimizers.Trainer import Trainer
-import NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPEnvironment as Env
 from pyro.distributions import *
+import NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPEnvironment as Env
 import torch
 from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 from NeuroEvo.NeuralNetwork.HierarchicalDirichletProcess.DPCategoricalAgent import DP as DPC
@@ -80,10 +80,12 @@ def generativeModelTest():
         genome.mutate(i)
     print(genome.nodeStats())
     genome.visualize()
-    plt.pause(10000)
 
-    data = genome.generate(np.ones((5,5)))
+    data = genome.generate(np.ones((50, 2)))
     print(data)
+    print(genome)
+
+    plt.pause(10000)
 
 class VariableEnv:
     def __init__(self, inputs = 1, outputs = 1, mutations = 10, datapointCount = 1000):
@@ -93,8 +95,10 @@ class VariableEnv:
         self.inputCount = inputs
         self.outputCount = outputs
         self.model = generativeModel
-        self.input = torch.ones(inputs, datapointCount)
-        self.data = torch.Tensor(self.model.generate(self.input))
+        print(self.model.nodeStats())
+        self.input = torch.ones((datapointCount, inputs))
+        self.generated = self.model.generate(self.input)
+        self.data = [self.input, self.generated]
 
     def test(self, population, duration, seed):
         for genome in population:
@@ -123,12 +127,91 @@ def probNeatTest():
     genome = ProbabilisticGenome(env.inputs(), env.outputs())
     optim.run(genome, env)
 
+def sviTest():
+    inputs = 2
+    outputs = 2
+    env = VariableEnv(inputs=inputs, outputs=outputs, mutations=10, datapointCount=10000)
+    # genome = ProbabilisticGenome(env.inputs(), env.outputs())
+    genome = env.model.copy()
+
+    plt.figure(0)
+    env.model.visualize()
+    # plt.pause(3)
+
+    # mutations = 0
+    # for _ in range(10):
+    #     mutations += genome.mutate(mutations)
+    mutations = 0
+    for _ in range(1):
+        genome.tweakWeight()
+
+    plt.figure(1)
+    genome.visualize()
+    # plt.pause(3)
+
+    losses, lastLoss = genome.train(env.data, 100)
+
+    plt.figure(2)
+    genome.visualize()
+    plt.pause(3)
+
+    plt.figure(3)
+    plt.subplot(1,1,1)
+    plt.plot(losses)
+
+    plt.figure(4)
+    data = env.generated
+    for i in range(outputs):
+        plt.subplot(2, outputs, i+1)
+        plt.title("Env output " + str(i))
+        plt.hist(list(np.array(data[:,i].tolist()).flat), bins = 100, density=True)
+
+    input = torch.ones((1000, inputs))
+    data = genome.generate(input)
+    for i in range(outputs):
+        plt.subplot(2, outputs, outputs + i+1)
+        plt.title("Model output " + str(i))
+        plt.hist(list(np.array(data[:,i].tolist()).flat), bins = 100, density=True)
+    plt.tight_layout()
+    plt.show()
+    plt.pause(1000)
 
 # nnToGenome()
 # Testing.test()
 # speciationTest()
 # neatTest()
-DPE.test()
+# DPE.test()
 
 # generativeModelTest()
 # probNeatTest()
+sviTest()
+
+
+
+#
+# inputs = torch.tensor([[1.3988, 1.3988, 1.3988, 1.3988, 1.3988, 1.3988, 1.3988, 1.3988, 1.3988,
+#            1.3988],
+#           [1.0280, 1.0280, 1.0280, 1.0280, 1.0280, 1.0280, 1.0280, 1.0280, 1.0280,
+#            1.0280],
+#           ])
+# inputs = (inputs /
+#           torch.max(torch.sum(inputs, dim=0),
+#                                torch.ones(len(torch.sum(inputs, dim=0)))))
+# inputs2 = torch.tensor([[0.0,0.0,1],[1.0,0.0,0]])
+# print(Categorical(inputs.T).sample([1]))
+# print(Normal(inputs[0], inputs[1]).sample([1]))
+# print(inputs)
+# print("sums " + str(torch.sum(inputs, dim=0)))
+# inputs = (torch.ones(5,10).T * torch.arange(-1,4)).T
+# inputs[:,4] = 0
+# print(inputs)
+#
+# # Negative numbers are not allowed in categoricals
+# # So we offset all values to positive by subtracting the smallest number, preserving the inputs ratios
+# print(torch.min(inputs.clone(), dim=0).values,)
+# inputs -= torch.minimum(
+#     torch.min(inputs.clone(), dim=0).values,
+#     torch.zeros(len(torch.min(inputs.clone(), dim=0).values))
+# )
+# print(inputs)
+
