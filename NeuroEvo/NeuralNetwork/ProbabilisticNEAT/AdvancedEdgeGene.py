@@ -15,3 +15,10 @@ class AdvancedEdgeGene(EdgeGene):
 
     def __repr__(self):
         return str(self.fromNr) + " " + str(self.toNr) + " " + str(self.weight) + " " + str(self.enabled)
+
+    def toData(self):
+        return [self.fromNr, self.toNr, self.weight, self.enabled, self.hMarker, self.toClass, self.fromClass]
+
+    @staticmethod
+    def fromData(data):
+        return AdvancedEdgeGene(data[0], data[1], data[2], data[3], data[4], data[5], data[6])

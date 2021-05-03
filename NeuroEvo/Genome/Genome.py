@@ -231,3 +231,6 @@ class Genome():
         for edge in self.edges:
             str += edge.__repr__() + "\n"
         return str
+
+    def fromString(self, string):
+        pass

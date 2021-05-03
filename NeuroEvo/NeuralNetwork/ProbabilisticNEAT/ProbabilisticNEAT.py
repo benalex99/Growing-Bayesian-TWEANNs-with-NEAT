@@ -9,8 +9,9 @@ from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticGenome import Probabi
 class ProbabilisticNEAT:
     population: list
 
-    def __init__(self, iterations, maxPopSize, batchSize, episodeDur, showProgress=(0, 0), excessImp=0.5,
-                 disjointImp=0.5, weightImp=1, inclusionThreshold=5):
+    def __init__(self, iterations, maxPopSize, batchSize, episodeDur=400, showProgress=(0, 0),
+                 excessImp=0.5, disjointImp=0.5, weightImp=1, inclusionThreshold=5,
+                 useMerging=True, useSpeciation=True, weightsOnly=False):
         """
 
         iterations (int):
@@ -23,9 +24,6 @@ class ProbabilisticNEAT:
             weightImp (float): The Importance of the Weight difference between two Genomes
             inclusionThreshold (float): The Range where the Delta of an Genome to the compare Genome should be appended
                                         to the Species of the compare Genome
-
-        Returns:
-            Deine Mudda!
         """
         self.population = []
         self.maxPopSize = maxPopSize
@@ -39,6 +37,9 @@ class ProbabilisticNEAT:
         self.weightImp = weightImp
         self.inclusionThreshold = inclusionThreshold
         self.hMarker = 1
+        self.useMerging = useMerging
+        self.useSpeciation = useSpeciation
+        self.weightsOnly = weightsOnly
         return
 
     def run(self, rootGenome, env):
@@ -52,10 +53,11 @@ class ProbabilisticNEAT:
             # Assign values to the mutations and add them to the population
             env.test(self.population, self.episodeDur, seed=iteration)
 
-            self.speciation()
-            self.sharingFitness()
-            self.murderGenomes()
-            self.mutationBasedOnSharedFitness()
+            if self.useSpeciation:
+                self.speciation()
+                self.sharingFitness()
+            self.murderGenomes(self.useSpeciation)
+            self.mutationBasedOnSharedFitness(self.useSpeciation)
 
             self.population.sort(key=lambda x: x.fitness, reverse=True)
             self.median = self.population[int(len(self.population) / 2) - 1].fitness
@@ -86,38 +88,43 @@ class ProbabilisticNEAT:
         print("Species Sum: " + str(sum(counts)))
         print("Species counts: " + str(counts) + "\n")
 
-    def murderGenomes(self):
+    def murderGenomes(self, useSpeciation):
         """
 
         :return:
         """
 
-        counts = []
-        for speciesEntry in self.species:
-            counts.append(len(speciesEntry))
-        count = sum(counts)
-
-        self.population.sort(key=lambda x: x.adjustedFitness, reverse=True)
-        while count > self.maxPopSize:
-            genome = self.population.pop(len(self.population) - 1)
-            count -= 1
+        if useSpeciation:
+            counts = []
             for speciesEntry in self.species:
-                if speciesEntry.__contains__(genome):
-                    if len(speciesEntry) > 1:
-                        for genomeEntry in speciesEntry:
-                            genomeEntry.adjustedFitness *= len(speciesEntry) / (len(speciesEntry) - 1)
-                    speciesEntry.remove(genome)
+                counts.append(len(speciesEntry))
+            count = sum(counts)
+
             self.population.sort(key=lambda x: x.adjustedFitness, reverse=True)
+            while count > self.maxPopSize:
+                genome = self.population.pop(len(self.population) - 1)
+                count -= 1
+                for speciesEntry in self.species:
+                    if speciesEntry.__contains__(genome):
+                        if len(speciesEntry) > 1:
+                            for genomeEntry in speciesEntry:
+                                genomeEntry.adjustedFitness *= len(speciesEntry) / (len(speciesEntry) - 1)
+                        speciesEntry.remove(genome)
+                self.population.sort(key=lambda x: x.adjustedFitness, reverse=True)
 
-        # Remove empty species from the species list
-        murderedSpecies = []
-        for species in self.species:
-            if len(species) == 0:
-                murderedSpecies.append(species)
-        for species in murderedSpecies:
-            self.species.remove(species)
+            # Remove empty species from the species list
+            murderedSpecies = []
+            for species in self.species:
+                if len(species) == 0:
+                    murderedSpecies.append(species)
+            for species in murderedSpecies:
+                self.species.remove(species)
+        else:
+            self.population.sort(key=lambda x: x.fitness, reverse=True)
+            while len(self.population) > self.maxPopSize:
+                self.population.pop(len(self.population) - 1)
 
-    def mutationBasedOnSharedFitness(self):
+    def mutationBasedOnSharedFitness(self, useSpeciation):
         """Mutates random Genomes in the Species in range of the percentage of the summed Fitness of all Genomes in
         a species.
 
@@ -126,12 +133,18 @@ class ProbabilisticNEAT:
         Returns:
             None
         """
+
         mutations = []
-        mutationIterations = self.calculateMutations()
-        for species, iterations in zip(self.species, mutationIterations):
-            for _ in range(iterations):
-                mutations.append(self.newGenome(species[random.randint(0, len(species) - 1)]))
-        self.population = mutations
+        if useSpeciation:
+            mutationIterations = self.calculateMutations()
+            for species, iterations in zip(self.species, mutationIterations):
+                for _ in range(iterations):
+                    mutations.append(self.newGenome(species[random.randint(0, len(species) - 1)]))
+            self.population = mutations
+        else:
+            for _ in range(self.batchSize):
+                mutations.append(self.newGenome(self.population[random.randint(0, len(self.population) - 1)]))
+            self.population.extend(mutations)
 
     def calculateMutations(self):
         """Calculates how many Mutation each Species gets
@@ -251,7 +264,11 @@ class ProbabilisticNEAT:
         # Reassign Species representatives
         for species in self.species:
             genome = species[random.randint(0, len(species) - 1)]
-            newSpecies.append([genome])
+            newSpecie = [genome]
+            if len(species) > 5:
+                species.sort(key=lambda x: x.fitness, reverse=True)
+                newSpecie.append(species[0])
+            newSpecies.append(newSpecie)
         self.species = newSpecies
 
         # The compare Genome to specify if the Genome should be in the same Species or create a new Species
@@ -399,13 +416,17 @@ class ProbabilisticNEAT:
         env.visualize(gene, duration=duration, useDone=useDone, seed=seed)
 
     def newGenome(self, parentGenome):
-        if random.randint(0, 1) < 1 or len(self.population) <= 3:
+        if random.randint(0, 1) < 1 or len(self.population) <= 3 or not self.useMerging:
             g = parentGenome.copy()
-            self.hMarker += g.mutate(self.hMarker)
+            success = 0
+            while success <= 0:
+                success = g.mutate(self.hMarker, weightsOnly=self.weightsOnly)
+            self.hMarker += success
         else:
             g1 = parentGenome
             g2 = self.population[random.randint(0, len(self.population) - 1)]
             while g1 == g2:
                 g2 = self.population[random.randint(0, len(self.population) - 1)]
             g = self.merge(g1, g2)
+        g.fitness = -math.inf
         return g

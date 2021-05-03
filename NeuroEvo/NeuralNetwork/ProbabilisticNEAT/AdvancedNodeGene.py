@@ -1,4 +1,5 @@
 from NeuroEvo.Genome.NodeGene import NodeGene
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.CustomDistr import ReluDistr, LeakyReluDistr, Identity
 from pyro.distributions import *
 from enum import Enum
 import random
@@ -6,18 +7,19 @@ import torch
 import numpy as np
 
 class NodeType(Enum):
-    Relu = 1
-    Multiplication = 2
+    Multiplication = 1
+    Relu = 2
     Categorical = 3
     Gaussian = 4
     Dirichlet = 5
+    Sum = 6
 
     # Returns a random node type according to a uniform prior
     @staticmethod
-    def random(output = True):
+    def random(output = False):
         if output:
             return NodeType(random.randint(3,4))
-        return NodeType(random.randint(1,5))
+        return NodeType(random.randint(2,5))
 
     def __str__(self):
          return self.name[0:3]
@@ -30,12 +32,15 @@ class AdvancedNodeGene(NodeGene):
         self.type = NodeType(type)
         self.classCount = classCount
         self.inputs = []
+        self.edges = []
 
     def function(self):
         if(self.input):
             output = self.inputs[0]
             self.inputs = []
             return output
+        if(self.output):
+            return self.sum()
         if(self.type == NodeType.Relu):
             return self.relu()
         if(self.type == NodeType.Multiplication):
@@ -49,11 +54,15 @@ class AdvancedNodeGene(NodeGene):
 
     # Returns the Relu of the sum of inputs
     def relu(self):
-        output = 0
+        output = []
         for input in self.inputs:
-            output += input[0]
+            output.append(input[0])
+        output = torch.stack(output, dim=0)
+        output = torch.sum(output, dim= 0)
+        # output = torch.relu(output)
         self.inputs = []
-        return max(output, 0)
+        # return output
+        return ReluDistr(output)
 
     # Returns the product of all inputs
     def multiply(self):
@@ -65,71 +74,60 @@ class AdvancedNodeGene(NodeGene):
 
     # Returns a Categorical distribution
     def categorical(self):
-        inputs = torch.zeros((self.classCount, len(self.inputs[0][0])))
+        # Assign inputs to parameters
+        inputs = torch.zeros((self.classCount, len(self.inputs[0][0])), device=torch.device('cuda'))
         for input in self.inputs:
             # Parameter index: input[1]
             # Parameter value: input[0]
             inputs[input[1]] = input[0]
 
-        # Negative numbers are not allowed in categoricals
-        # So we offset all values to positive by subtracting the smallest number, preserving the inputs ratios
-        inputs -= torch.minimum(
-            torch.min(inputs.clone(), dim=0).values,
-            torch.zeros(len(torch.min(inputs.clone(), dim=0).values)))
-        # Normalize inputs to distribution probabilities
-        inputs = inputs / torch.max(torch.sum(inputs, dim=0), torch.ones(len(torch.sum(inputs, dim=0))))
-
-        # If all inputs are 0, set the probabilities to be uniform TODO: check if this replaces the correct values
-        sums = torch.sum(inputs, dim=0)
-        for i, sum in enumerate(sums):
-            if sum==0:
-                inputs[:,i] = torch.ones(self.classCount)/self.classCount
-
         # Clear activation
         self.inputs = []
-        return Categorical(inputs.T)
+
+        # Effectively a categorical.
+        # Multinomial is used because it outputs hot vectors. These are in an easier representation for the network.
+        return Multinomial(1, logits=inputs.T)
 
     # Returns a gaussian distribution
     def gaussian(self):
-        inputs = torch.zeros(2, len(self.inputs[0][0]))
-
+        # Assign inputs to parameters
+        inputs = torch.ones(2, len(self.inputs[0][0]), device=torch.device('cuda'))
         for input in self.inputs:
-            # Parameter index: input[1]
+            # Parameter index: input[1] (index of 0 is mean, index of 1 is variance)
             # Parameter value: input[0]
             inputs[input[1]] = input[0]
 
         # Gaussians variance may not be negative or zero, so we truncate it to be above a small value
-        inputs[1] = torch.maximum(
-            inputs[1].clone(),
-            torch.ones(len(inputs[1])) * 0.0000001)
+        inputs[1][inputs[1]<=0] = 0.0000001
 
         # Clear activation
         self.inputs = []
-
         return Normal(inputs[0], inputs[1])
 
     # Returns a dirichlet distribution
     def dirichlet(self):
-        inputs = torch.zeros(self.classCount)
+        # Assign inputs to parameters
+        inputs = torch.zeros((self.classCount, len(self.inputs[0][0])), device=torch.device('cuda'))
         for input in self.inputs:
-            # Parameter index: input[1]
+            # Parameter class: input[1]
             # Parameter value: input[0]
             inputs[input[1]] = input[0]
 
         # The Dirichlet distribution may not receive parameter values smaller or equal to 0,
         # so we truncate the values to a small number
-        for i in range(len(inputs)):
-            inputs[i] = max(inputs[i], 0.0000001)
+        inputs[inputs<=0] = 0.0000001
 
         self.inputs = []
-        return Dirichlet(inputs)
+        return Dirichlet(inputs.T)
 
-    def linear(self):
-        output = 0
+    def sum(self):
+        output = []
         for input in self.inputs:
-            output += input[0]
+            output.append(input[0])
+        output = torch.stack(output, dim=0)
+        output = torch.sum(output, dim= 0)
         self.inputs = []
-        return output
+        return Identity(output)
 
     def __repr__(self):
         if(self.output):
@@ -149,3 +147,10 @@ class AdvancedNodeGene(NodeGene):
     def __deepcopy__(self, memodict={}):
         return AdvancedNodeGene(self.nodeNr, self.layer, self.output, self.input,
                                 outputtingTo= self.outputtingTo.copy(), type=self.type, classCount=self.classCount)
+
+    def toData(self):
+        return [self.nodeNr, self.layer, self.output, self.input, self.outputtingTo, self.type, self.classCount]
+
+    @staticmethod
+    def fromData(data):
+        return AdvancedNodeGene(data[0], data[1], data[2], data[3], data[4], data[5], data[6])

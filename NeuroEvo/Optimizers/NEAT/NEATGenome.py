@@ -4,10 +4,12 @@
 import math
 
 import numpy as np
+import torch
 
 from NeuroEvo.Genome import Genome, NodeGene, ConnectionGene
 import random
 import copy
+from pyro.distributions import *
 
 
 class NEATGenome(Genome.Genome):
@@ -23,7 +25,7 @@ class NEATGenome(Genome.Genome):
             self.addEdge(hMarker)
             return 1
 
-        randomMutate = random.randint(0, 2)
+        randomMutate = Categorical(torch.tensor([0.4, 0.3, 0.3])).sample([1])[0]
         if randomMutate == 0:
             self.addEdge(hMarker)
             return 1

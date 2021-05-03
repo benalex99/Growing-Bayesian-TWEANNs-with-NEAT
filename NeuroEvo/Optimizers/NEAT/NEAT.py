@@ -10,8 +10,8 @@ from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 class NEAT:
     population: list
 
-    def __init__(self, iterations, maxPopSize, batchSize, episodeDur, showProgress=(0, 0), excessImp=0.5,
-                 disjointImp=0.5, weightImp=1, inclusionThreshold=5):
+    def __init__(self, iterations, maxPopSize, batchSize, episodeDur, showProgress=(0, 0), excessImp=1,
+                 disjointImp=1, weightImp=1, inclusionThreshold=5):
         """
 
         iterations (int):
@@ -40,6 +40,8 @@ class NEAT:
         self.weightImp = weightImp
         self.inclusionThreshold = inclusionThreshold
         self.hMarker = 1
+
+        self.maxFitnesses = []
         return
 
     def run(self, rootGenome, env):
@@ -71,7 +73,8 @@ class NEAT:
             print("Population Size: " + str(len(self.population)+sum(counts)))
             print("Species: " + str(len(self.species)))
             print("Species Sum: " + str(sum(counts)))
-            print("Species counts: " + str(counts) + "\n")
+            print("Species counts: " + str(counts))
+            print("Species stagnation: " + str(self.maxFitnesses) + "\n")
             if self.showProgress[0] > 0 and iteration % self.showProgress[0] == 0:
                 self.visualize(self.bestGene(), env, self.showProgress[1], seed=iteration)
 
@@ -85,7 +88,8 @@ class NEAT:
         print("Population Size: " + str(len(self.population)))
         print("Species: " + str(len(self.species)))
         print("Species Sum: " + str(sum(counts)))
-        print("Species counts: " + str(counts) + "\n")
+        print("Species counts: " + str(counts))
+        print("Species stagnation: " + str(self.maxFitnesses) + "\n")
 
     def murderGenomes(self):
         """
@@ -115,8 +119,15 @@ class NEAT:
         for species in self.species:
             if len(species) == 0:
                 murderedSpecies.append(species)
+
         for species in murderedSpecies:
+            self.maxFitnesses.pop(self.species.index(species))
             self.species.remove(species)
+
+        for index, (species, maxFitness) in enumerate(zip(self.species, self.maxFitnesses)):
+            if maxFitness[1] > 15:
+                self.maxFitnesses.pop(index)
+                self.species.pop(index)
 
     def mutationBasedOnSharedFitness(self):
         """Mutates random Genomes in the Species in range of the percentage of the summed Fitness of all Genomes in
@@ -171,7 +182,7 @@ class NEAT:
             list: The summed Fitness Values for all Genome in each Species separated
         """
         summedFitness = []
-        for index, entrySpecies in enumerate(self.species):
+        for index, (entrySpecies, maxFitness) in enumerate(zip(self.species, self.maxFitnesses)):
             summedFitness.append(0)
             for genome in entrySpecies:
                 summedFitness[index] += genome.adjustedFitness
@@ -236,7 +247,11 @@ class NEAT:
         # Reassign Species representatives
         for species in self.species:
             genome = species[random.randint(0, len(species) - 1)]
-            newSpecies.append([genome])
+            newSpecie = [genome]
+            if len(species) > 5:
+                species.sort(key=lambda x: x.fitness, reverse=True)
+                newSpecie.append(species[0])
+            newSpecies.append(newSpecie)
         self.species = newSpecies
 
         # The compare Genome to specify if the Genome should be in the same Species or create a new Species
@@ -261,6 +276,16 @@ class NEAT:
 
             if not speciesFound:
                 self.species.append([genome])
+                self.maxFitnesses.append([genome.fitness, 0])
+
+        # Update stagnation
+        for species, maxFitness in zip(self.species, self.maxFitnesses):
+            species.sort(key=lambda x: x.fitness, reverse=True)
+            if maxFitness[0] < species[0].fitness:
+                maxFitness[0] = species[0].fitness
+                maxFitness[1] = 0
+            else:
+                maxFitness[1] += 1
 
     @staticmethod
     def setFactorN(firstGenomeEdges, secondGenomeEdges):

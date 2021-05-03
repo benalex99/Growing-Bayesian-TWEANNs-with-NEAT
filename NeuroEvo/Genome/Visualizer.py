@@ -20,8 +20,8 @@ class Visualizer:
 
     # addEdge function inputs the vertices of an
     # edge and appends it to the visual list
-    def addEdge(self, a, b):
-        self.G.add_edge(a,b, connectionstyle='arc3, rad = 0.1')
+    def addEdge(self, a, b, rad=0.0):
+        self.G.add_edge(a,b, rad=rad)
 
     def addNode(self, nodeNr, pos = (0,0), size = 0):
         self.G.add_node(nodeNr, pos = pos, size = size)
@@ -31,7 +31,7 @@ class Visualizer:
     # creates a graph with a given list 
     # nx.draw_networkx(G) - plots the graph 
     # plt.show() - displays the graph 
-    def visualize(self, ion= True, labels = None, edgeLabels=None):
+    def visualize(self, ion= True, labels = None, edgeLabels=None, edgeRads=None):
         plt.cla()
         if(ion):
             if (not plt.isinteractive()):
@@ -48,10 +48,16 @@ class Visualizer:
 
         nx.draw_networkx_labels(self.G, pos, labels=labels)
 
-        nx.draw_networkx_edges(self.G, pos) #, connectionstyle='arc3, rad = 0.4')
+        # nx.draw_networkx_edges(self.G, pos) #, connectionstyle='arc3, rad = 0.0')
+        for edge in self.G.edges(data=True):
+            nx.draw_networkx_edges(self.G, pos, edgelist=[(edge[0],edge[1])], connectionstyle=f'arc3, rad = {edge[2]["rad"]}')
+
+
         if edgeLabels != None:
             # edge_labels = dict([((n1, n2), f'{n1}->{n2}')
             #                     for n1, n2 in self.G.edges])
-            nx.draw_networkx_edge_labels(self.G, pos, edge_labels=edgeLabels, font_size=8, alpha=0.5)
+            text = nx.draw_networkx_edge_labels(self.G, pos, edge_labels=edgeLabels, font_size=8, alpha=0.5)
+            for _, t in text.items():
+                t.set_rotation('horizontal')
         plt.show()
         plt.pause(0.001)
