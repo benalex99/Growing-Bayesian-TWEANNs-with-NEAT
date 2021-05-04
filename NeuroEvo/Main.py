@@ -44,6 +44,8 @@ def nnToGenome():
     genome.weightsFromNN(nn)
     time.sleep(1000)
 
+# Testing optimization of our models with SVI. Does partially work.
+# Will diverge from optimal solutions. Discarded.
 def sviTest():
     torch.cuda.init()
     inputs = 2
@@ -95,6 +97,7 @@ def sviTest():
     plt.show()
     plt.pause(1000)
 
+# Testing optimization of our models with MCMC. Does not work. Cannot find legal starting parameters. Discarded.
 def MCMCTest():
     from pyro.infer import MCMC, NUTS
 
@@ -112,53 +115,6 @@ def MCMCTest():
 
     hmc_samples = {k: v.detach().cpu().numpy() for k, v in mcmc.get_samples().items()}
     print(hmc_samples)
-
-
-# Old function to check the behavior of genomes being allocated to species.
-# The outcome showed a predictable distribution of genomes
-def speciationTest():
-    avgSpecies = 0
-    iter = 500
-    for x in range(iter):
-        genomes = []
-        genome = NEATGenome(5, 1)
-        genome.fitness = random.randint(-10, 10)
-        genomes.append(genome)
-        optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
-
-        for i in range(50):
-            genomeN = genomes[random.randint(0, len(genomes) - 1)].copy()
-            genomeN.mutate(i)
-            genomeN.fitness = random.randint(-50, 50)
-            genomes.append(genomeN)
-
-        optim.speciation()
-        print(len(optim.species))
-        avgSpecies += len(optim.species)
-    print("Average number of Species:" + str(avgSpecies / iter))
-
-# Testing our implementation of NEAT on openAI gym "Lunar Lander" and "CartPole"
-def neatTest():
-    optim = NEAT(iterations=1000000000000, maxPopSize=100, batchSize=200, episodeDur=400, showProgress=(1, 200),
-                 inclusionThreshold=5)
-    env = GymEnv('LunarLander-v2')
-    # env = GymEnv('CartPole-v0')
-    gg, score = Trainer.run(optim, env)
-    gg.visualize(ion=False)
-
-def generativeModelTest():
-
-    genome = ProbabilisticGenome(2, 2)
-    for i in range(10):
-        genome.mutate(i)
-    print(genome.nodeStats())
-    genome.visualize()
-
-    data = genome.generate(torch.ones((50, 2),device=torch.device('cuda')))
-    print(data)
-    print(genome)
-
-    plt.pause(10000)
 
 class VariableEnv:
     def __init__(self, inputs = 1, outputs = 1, mutations = 10, datapointCount = 1000):
@@ -271,6 +227,53 @@ class VariableEnv:
         self.model.visualize()
         plt.pause(duration/100)
 
+# Old function to check the behavior of genomes being allocated to species.
+# The outcome showed a predictable distribution of genomes. Later NEAT test verifies. Works well.
+def speciationTest():
+    avgSpecies = 0
+    iter = 500
+    for x in range(iter):
+        genomes = []
+        genome = NEATGenome(5, 1)
+        genome.fitness = random.randint(-10, 10)
+        genomes.append(genome)
+        optim = NEAT(iterations=1000000000000, batchSize=200, maxPopSize=100, episodeDur=400, showProgress=(1, 1000))
+
+        for i in range(50):
+            genomeN = genomes[random.randint(0, len(genomes) - 1)].copy()
+            genomeN.mutate(i)
+            genomeN.fitness = random.randint(-50, 50)
+            genomes.append(genomeN)
+
+        optim.speciation()
+        print(len(optim.species))
+        avgSpecies += len(optim.species)
+    print("Average number of Species:" + str(avgSpecies / iter))
+
+# Testing our implementation of NEAT on openAI gym "Lunar Lander" and "CartPole". Works well.
+def neatTest():
+    optim = NEAT(iterations=1000000000000, maxPopSize=100, batchSize=200, episodeDur=400, showProgress=(1, 200),
+                 inclusionThreshold=5)
+    # env = GymEnv('LunarLander-v2')#Achieves a score of 180 (solved is 200) after 100 iterations. Took about 10 minutes
+    env = GymEnv('CartPole-v0')  # Reaches maximum score (200) after 5 iterations. Reached steady state in 10 iterations
+    gg, score = Trainer.run(optim, env)
+    gg.visualize(ion=False)
+
+# Testing arbitrary model generation, as well as their ability to generate data. Works well.
+def generativeModelTest():
+    genome = ProbabilisticGenome(2, 2)
+    for i in range(10):
+        genome.mutate(i)
+    print(genome.nodeStats())
+    genome.visualize()
+
+    data = genome.generate(torch.ones((50, 2), device=torch.device('cuda')))
+    print(data)
+    print(genome)
+
+    plt.pause(10000)
+
+# Testing our random weight optimization using NEAT without merging or speciation. Works.
 def RandomOptim():
 
     optim = ProbabilisticNEAT(iterations=1000000000000, maxPopSize=200, batchSize=200,
@@ -283,6 +286,7 @@ def RandomOptim():
         genome.tweakWeight()
     optim.run(genome, env)
 
+# Testing our structure comparison metric. Kinda works.
 def compareStructureTest():
     genome = ProbabilisticGenome(1, 1)
     for i in range(10):
@@ -300,6 +304,7 @@ def compareStructureTest():
     print(Analysis.structuralDivergence(genome, genome2))
     plt.pause(10000)
 
+# Testing our distribution comparison metric. Works well.
 def mseLossTest():
     genome = ProbabilisticGenome(1, 1)
     for i in range(10):
@@ -315,10 +320,25 @@ def mseLossTest():
     genome2.visualize()
     plt.pause(10000)
 
-# compareStructureTest()
-# mseLossTest()
-# generativeModelTest()
-neatTest()
+# Test storing and retrieving Genomes on and from the hard disk. Works.
+def genomeStorageTest():
+    genome = ProbabilisticGenome(1, 1)
+    for i in range(10):
+        genome.mutate(i)
+    genome.visualize()
+    plt.pause(3)
+    print("next")
+    Analysis.storeGenomesInCsv([genome])
+    [genome2] = Analysis.readGenomesFromCsv()
+    genome2.visualize()
+    plt.pause(3)
+    for i in range(10):
+        genome2.mutate(i)
+    genome2.visualize()
+    plt.pause(3)
+    genome.generate()
 
-# print(Multinomial(1, logits=torch.tensor([1.,2.,1.])).sample([1]))
-# print(Dirichlet(torch.tensor([1.,1.,1.])).sample([1]))
+# Test storing and retrieving test data on and from hard disk.
+def dataStorageTest():
+    pass
+dataStorageTest()

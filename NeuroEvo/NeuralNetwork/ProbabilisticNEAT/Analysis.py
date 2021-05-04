@@ -1,6 +1,8 @@
 import csv
 import os
 import random
+import shutil
+from os.path import exists
 
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticGenome import ProbabilisticGenome
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.NEATEnv import VariableEnv
@@ -145,7 +147,7 @@ class Analysis():
         return (len(genome1.nodes)-len(genome2.nodes) + 1 - (torch.sum(torch.sum(alignments))/((len(genome1.nodes)+len(genome1.nodes))/2)))
 
     @staticmethod
-    def addToCsv(data, path="data.txt"):
+    def addToCsv(data, path="Data\\testData.txt"):
         # Determine how many genomes weve already done
         with open(path, 'r') as file:
             reader = csv.reader(file)
@@ -158,28 +160,36 @@ class Analysis():
                 writer.writerow([dist,div])
 
     @staticmethod
-    def storeGenomesInCsv(genomes, rootPath="Genomes\\"):
+    def storeGenomesInCsv(genomes, rootPath="Data\\Genomes"):
+        if not exists(rootPath):
+            os.mkdir(rootPath)
+        else:
+            shutil.rmtree(rootPath)
+            os.mkdir(rootPath)
+
         for i, genome in enumerate(genomes):
 
             # Store the genomes nodes
-            path = rootPath + str(i) + "\\nodes.csv"
+            path = rootPath +"\\" + str(i)
+            os.mkdir(path)
+            path += "\\nodes.csv"
             with open(path, mode='w') as file:
                 data_writer = csv.DictWriter(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL,
-                                             fieldnames=range(7))
+                                             fieldnames=range(8))
                 for node in genome.nodes:
-                    data_writer.writerow(node.toData())
+                    data_writer.writerow(dict(zip(range(8),node.toData())))
 
             # Store the genomes edges
-            path = rootPath + str(i) + "\\edges.csv"
+            path = rootPath + "\\" +str(i) + "\\edges.csv"
             with open(path, mode='w') as file:
                 data_writer = csv.DictWriter(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL,
-                                             fieldnames=range(7))
-                for node in genome.nodes:
-                    data_writer.writerow(node.toData())
+                                             fieldnames=range(8))
+                for node in genome.edges:
+                    data_writer.writerow(dict(zip(range(8),node.toData())))
 
     @staticmethod
-    def readGenomesFromCsv(rootPath="Genomes\\"):
-        genomeFolders = os.listdir()
+    def readGenomesFromCsv(rootPath="Data\\Genomes"):
+        genomeFolders = os.listdir(rootPath)
         genomeFolders.sort(key=lambda x: int(x), reverse=True)
 
         genomes = []
@@ -188,18 +198,18 @@ class Analysis():
             edgeData = []
 
             # Retrieve the genomes nodes
-            path = rootPath + Folder + "\\nodes.csv"
+            path = rootPath + "\\" + Folder + "\\nodes.csv"
             with open(path, mode='r') as file:
                 data_reader = csv.DictReader(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL,
-                                             fieldnames=range(7))
+                                             fieldnames=range(8))
                 for row in data_reader:
                     nodeData.append(row)
 
             # Retrieve the genomes edges
-            path = rootPath + Folder + "\\edges.csv"
+            path = rootPath + "\\" + Folder + "\\edges.csv"
             with open(path, mode='r') as file:
-                data_writer = csv.DictWriter(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL,
-                                             fieldnames=range(7))
+                data_reader = csv.DictReader(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL,
+                                             fieldnames=range(8))
                 for row in data_reader:
                     edgeData.append(row)
 

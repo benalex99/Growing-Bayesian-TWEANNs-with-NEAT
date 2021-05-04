@@ -1,3 +1,5 @@
+import ast
+
 from NeuroEvo.Genome.ConnectionGene import EdgeGene
 
 class AdvancedEdgeGene(EdgeGene):
@@ -21,4 +23,13 @@ class AdvancedEdgeGene(EdgeGene):
 
     @staticmethod
     def fromData(data):
-        return AdvancedEdgeGene(data[0], data[1], data[2], data[3], data[4], data[5], data[6])
+        for i in range(len(data)):
+            if data[i] == '':
+                data[i] = 'None'
+        return AdvancedEdgeGene(ast.literal_eval(data[0]),
+                                ast.literal_eval(data[1]),
+                                ast.literal_eval(data[2]),
+                                ast.literal_eval(data[3]),
+                                ast.literal_eval(data[4]),
+                                ast.literal_eval(data[5]),
+                                ast.literal_eval(data[6]))

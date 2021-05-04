@@ -40,6 +40,7 @@ class ProbabilisticNEAT:
         self.useMerging = useMerging
         self.useSpeciation = useSpeciation
         self.weightsOnly = weightsOnly
+        self.maxFitnesses = []
         return
 
     def run(self, rootGenome, env):
@@ -117,8 +118,14 @@ class ProbabilisticNEAT:
             for species in self.species:
                 if len(species) == 0:
                     murderedSpecies.append(species)
+
             for species in murderedSpecies:
+                self.maxFitnesses.pop(self.species.index(species))
                 self.species.remove(species)
+            for index, (species, maxFitness) in enumerate(zip(self.species, self.maxFitnesses)):
+                if maxFitness[1] > 15:
+                    self.maxFitnesses.pop(index)
+                    self.species.pop(index)
         else:
             self.population.sort(key=lambda x: x.fitness, reverse=True)
             while len(self.population) > self.maxPopSize:
@@ -293,6 +300,16 @@ class ProbabilisticNEAT:
 
             if not speciesFound:
                 self.species.append([genome])
+                self.maxFitnesses.append([genome.fitness, 0])
+
+        # Update stagnation
+        for species, maxFitness in zip(self.species, self.maxFitnesses):
+            species.sort(key=lambda x: x.fitness, reverse=True)
+            if maxFitness[0] < species[0].fitness:
+                maxFitness[0] = species[0].fitness
+                maxFitness[1] = 0
+            else:
+                maxFitness[1] += 1
 
     @staticmethod
     def setFactorN(firstGenomeEdges, secondGenomeEdges):

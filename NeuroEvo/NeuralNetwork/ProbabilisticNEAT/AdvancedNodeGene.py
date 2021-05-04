@@ -1,3 +1,5 @@
+import ast
+
 from NeuroEvo.Genome.NodeGene import NodeGene
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.CustomDistr import ReluDistr, LeakyReluDistr, Identity
 from pyro.distributions import *
@@ -85,7 +87,7 @@ class AdvancedNodeGene(NodeGene):
         self.inputs = []
 
         # Effectively a categorical.
-        # Multinomial is used because it outputs hot vectors. These are in an easier representation for the network.
+        # Multinomial is used because it outputs hot vectors. These are in an easier format for the network.
         return Multinomial(1, logits=inputs.T)
 
     # Returns a gaussian distribution
@@ -149,8 +151,18 @@ class AdvancedNodeGene(NodeGene):
                                 outputtingTo= self.outputtingTo.copy(), type=self.type, classCount=self.classCount)
 
     def toData(self):
-        return [self.nodeNr, self.layer, self.output, self.input, self.outputtingTo, self.type, self.classCount]
+        return [self.nodeNr, self.layer, self.output, self.input, self.outputtingTo, self.outputtingToClass, self.type.value, self.classCount]
 
     @staticmethod
     def fromData(data):
-        return AdvancedNodeGene(data[0], data[1], data[2], data[3], data[4], data[5], data[6])
+        for i in range(len(data)):
+            if data[i] == '':
+                data[i] = 'None'
+        return AdvancedNodeGene(ast.literal_eval(data[0]),
+                                ast.literal_eval(data[1]),
+                                ast.literal_eval(data[2]),
+                                ast.literal_eval(data[3]),
+                                ast.literal_eval(data[4]),
+                                ast.literal_eval(data[5]),
+                                ast.literal_eval(data[6]),
+                                ast.literal_eval(data[7]))

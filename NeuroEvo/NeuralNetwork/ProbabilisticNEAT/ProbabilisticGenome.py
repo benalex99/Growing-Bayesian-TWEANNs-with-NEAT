@@ -25,6 +25,7 @@ class ProbabilisticGenome(Genome.Genome):
 
         for i in range(inputSize):
             node = AdvancedNodeGene.AdvancedNodeGene(len(self.nodes),layer = 0, input = True)
+            node.type = NodeType.Sum
             self.nodes.append(node)
 
         for i in range(outputSize):
@@ -338,7 +339,9 @@ class ProbabilisticGenome(Genome.Genome):
         return False
 
     # Generates data given input
-    def generate(self, inputData):
+    def generate(self, inputData=None):
+        if inputData == None:
+            inputData = torch.ones((1000, self.inputSize))
         # Get the nodes layer allocation for update sequencing
         layers = self.getLayers()
 
@@ -577,16 +580,17 @@ class ProbabilisticGenome(Genome.Genome):
         edges = []
 
         inputCount, outputCount, maxLayer = 0, 0, 0
-        for node in data[0]:
-            nodes.append(AdvancedNodeGene.AdvancedNodeGene.fromData(node))
+        for nodeData in data[0]:
+            node = AdvancedNodeGene.AdvancedNodeGene.fromData(nodeData)
+            nodes.append(node)
             if node.input:
                 inputCount += 1
             elif node.output:
                 outputCount += 1
             maxLayer = max(maxLayer, node.layer)
 
-        for edge in data[1]:
-            edges.append(AdvancedEdgeGene.AdvancedEdgeGene.fromData(edge))
+        for edgeData in data[1]:
+            edges.append(AdvancedEdgeGene.AdvancedEdgeGene.fromData(edgeData))
 
         genome = ProbabilisticGenome(0, 0)
         genome.inputSize = inputCount
