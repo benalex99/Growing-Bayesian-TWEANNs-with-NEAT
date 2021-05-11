@@ -22,10 +22,13 @@ class VariableEnv:
 
     def test(self, population, duration=None, seed=None):
         tests = []
+        # We only want to calculate the score for those models that have not yet received a score
+        # So grab out the ones that have -inf (default) score
         for genome in population:
             if genome.fitness == -math.inf:
                 tests.append(genome)
-        for genome in tqdm(tests):
+        # Test those that have just been filtered out
+        for genome in tests:
             predictions = genome.generate(self.input)
             genome.fitness = -VariableEnv.mse_loss(self.generated, predictions, detail=self.detail)
 
@@ -51,30 +54,26 @@ class VariableEnv:
         for x in q.keys():
             if p.keys().__contains__(x):
                 klDivergence += p[x] * math.log(p[x]/q[x])
-        #
-        # # TODO: What about values for P that are not supported by Q?
-        # #  If we do not punish this, the model will attempt to
-        # #  optimize itself for having a disjoint probability space
-        # # Suggestion: multiply final KL-divergence by 1+lostPProb. Worst case, KL divergence is doubled.
-        # if(punishIgnorance):
-        #     lostPProb = 0
-        #     for x in p.keys():
-        #         if not q.keys().__contains__(x):
-        #             lostPProb += p[x]
-        #     klDivergence *= 1+lostPProb
-        #     # print("lostProb " + str(lostPProb))
-        #     #                                                           __           __
-        #     # If all predictions are disjoint, there is nothing we can do \ ( ^-^ ) /
-        #     if lostPProb >= 1:
-        #         klDivergence = 1000000 # A large value, because neat doesnt handle infinity well
+
+        # Suggestion: multiply final KL-divergence by 1+lostPProb. Worst case, KL divergence is doubled.
+        if(punishIgnorance):
+            lostPProb = 0
+            for x in p.keys():
+                if not q.keys().__contains__(x):
+                    lostPProb += p[x]
+            klDivergence *= 1+lostPProb
+            #                                                           __           __
+            # If all predictions are disjoint, there is nothing we can do \ ( ^-^ ) /
+            if lostPProb >= 1:
+                klDivergence = 1000000  # A large value because NEAT doesnt handle infinity well
 
         return klDivergence
 
     @staticmethod
     def mse_loss(predictions, targets, detail=20):
         '''
-        We do this because KL-divergence is not suited for structure optimization. KL-divergence does not handle distributions
-        with differing supports.
+        We do this because KL-divergence is not suited for structure optimization. KL-divergence does not handle
+        distributions with differing supports.
         :param targets: Samples of the environment P
         :param predictions: Samples of the model Q
         :param detail: The detail at which we compare. Determines the amount of buckets. Can be any positive real.
@@ -87,11 +86,11 @@ class VariableEnv:
         for x in list(q.keys()) + list(p.keys()):
             count += 1
             if p.keys().__contains__(x) and q.keys().__contains__(x):
-                loss += (q[x] - p[x]) ** 2
+                loss += abs(q[x] - p[x]) #** 2
             elif q.keys().__contains__(x):
-                loss += (q[x] - 0) ** 2
+                loss += abs(q[x] - 0) #** 2
             else:
-                loss += (0 - p[x]) ** 2
+                loss += abs(0 - p[x]) #** 2
         return loss / count
 
     @staticmethod
@@ -147,10 +146,10 @@ class VariableEnv:
 
         return p, q
 
-    def inputs(self):
+    def inputSize(self):
         return self.model.inputSize
 
-    def outputs(self):
+    def outputSize(self):
         return self.model.outputSize
 
     def visualize(self, gene, duration, useDone=None, seed=None):

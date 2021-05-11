@@ -3,6 +3,8 @@ import math
 import random
 import time
 
+from pyro.distributions import Binomial
+
 from NeuroEvo.Genome.NodeGene import NodeGene
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 
@@ -212,6 +214,11 @@ class NEAT:
                 if random.randint(0, 1) < 1:
                     # Randomly assign one of either genomes weights
                     fitterGenome.edges[index].weight = edge.weight
+                    if not edge.enabled or not fitterGenome.edges[index].enabled:
+                        if Binomial(1, 0.75).sample([1])[0].item() == 0:
+                            fitterGenome.edges[index].enabled = True
+                        else:
+                            fitterGenome.edges[index].enabled = False
             else:
                 disjoint = True
                 if firstGenome.fitness == secondGenome.fitness:

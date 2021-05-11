@@ -8,10 +8,11 @@ from pyro.infer import TraceGraph_ELBO
 from tqdm import tqdm
 
 from NeuroEvo.Environments.GymEnv import GymEnv
-from NeuroEvo.NeuralNetwork.ProbabilisticNEAT import NEATEnv
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT import NEATEnv, StructuralDistance
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.AdvancedEdgeGene import AdvancedEdgeGene
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.AdvancedNodeGene import AdvancedNodeGene
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.Analysis import Analysis
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.NEATEnv import VariableEnv
 from NeuroEvo.Optimizers.NEAT.NEAT import NEAT
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 from NeuroEvo.Optimizers.QLearner.QLearner import QPolicy
@@ -116,117 +117,6 @@ def MCMCTest():
     hmc_samples = {k: v.detach().cpu().numpy() for k, v in mcmc.get_samples().items()}
     print(hmc_samples)
 
-class VariableEnv:
-    def __init__(self, inputs = 1, outputs = 1, mutations = 10, datapointCount = 1000):
-        generativeModel = ProbabilisticGenome(inputs, outputs)
-        for i in range(mutations):
-            generativeModel.mutate(i)
-        self.inputCount = inputs
-        self.outputCount = outputs
-        self.model = generativeModel
-        self.input = torch.ones((datapointCount, inputs), device=torch.device('cuda'))
-        self.generated = self.model.generate(self.input)
-        self.data = [self.input, self.generated]
-
-    def test(self, population, duration, seed):
-        tests = []
-        for genome in population:
-            if genome.fitness == -math.inf:
-                tests.append(genome)
-        for genome in tqdm(tests):
-            predictions = genome.generate(self.input)
-            genome.fitness = -self.discretizedKullbackLeiber(self.generated, predictions, punishIgnorance=True)
-            # genome.fitness = -self.mse_loss(predictions, self.generated)
-
-    def mse_loss(self, predictions, targets):
-        return torch.sum((predictions - targets) ** 2)
-
-    @staticmethod
-    def discretizedKullbackLeiber(targets, predictions, detail=20, punishIgnorance=False):
-        """
-        :param predictions: Samples of the model Q
-        :param targets: Samples of the environment P
-        :param detail: The detail at which we compare. Determines the amount of buckets. Can be any positive real.
-        :param punishIgnorance: Whether to punish a disjoint probability space
-                                    (Samples from P that have a probability of 0 according to Q)
-        :return: The approximated Kullback-Leibler divergence KL(P||Q)
-        """
-        # We batch continuous variables together to form buckets. This is a form of clustering.
-        # First we normalize the continuous data to a range of 100.
-        # Then we scale the values up by the detail parameter
-        # and round to the closest integer, which now represent class indices.
-        # Once we have classes, we can apply KL-Divergence as would be on discrete distributions.
-
-        # Normalize each dimension across all samples.
-        max = torch.stack([predictions, targets]).max(0)[0][0]
-        max[max==0] = 1 # Don't divide by zero :)
-        predNormed = predictions / max
-        targetsNormed = targets / max
-
-        # Scale up and round to closest integers, so we have up to D * detail different buckets
-        predNormed = torch.round(predNormed * detail)
-        targetsNormed = torch.round(targetsNormed * detail)
-
-        # Count the occurrences in each bucket
-        uniquePreds = {}
-        for pred in predNormed:
-            key = str(pred.tolist())
-            if uniquePreds.keys().__contains__(key):
-                uniquePreds[key] += 1
-            else:
-                uniquePreds[key] = 1
-        uniqueTargets = {}
-        for target in targetsNormed:
-            key = str(target.tolist())
-            if uniqueTargets.keys().__contains__(key):
-                uniqueTargets[key] += 1
-            else:
-                uniqueTargets[key] = 1
-
-        # Calculate the probabilities of the values based on the occurrences
-        q = {}
-        for pred in uniquePreds.keys():
-            q[pred] = uniquePreds[pred] / len(predictions)
-        p = {}
-        for target in uniqueTargets.keys():
-            p[target] = uniqueTargets[target] / len(targets)
-
-        # Calculate the Kullback-Leibler divergence KL(P||Q)
-        klDivergence = 0
-        for x in q.keys():
-            if p.keys().__contains__(x):
-                klDivergence += p[x] * math.log(p[x]/q[x])
-
-        # TODO: What about values for P that are not supported by Q?
-        #  If we do not punish this, the model will attempt to
-        #  optimize itself for having a disjoint probability space
-        # Suggestion: multiply final KL-divergence by 1+lostPProb. Worst case, KL divergence is doubled.
-        if(punishIgnorance):
-            lostPProb = 0
-            for x in p.keys():
-                if not q.keys().__contains__(x):
-                    lostPProb += p[x]
-            klDivergence *= 1+lostPProb
-            # print("lostProb " + str(lostPProb))
-            #                                                           __           __
-            # If all predictions are disjoint, there is nothing we can do \ ( ^-^ ) /
-            if lostPProb >= 1:
-                klDivergence = 1000000 # A large value, because neat doesnt handle infinity well
-
-        return klDivergence
-
-    def inputs(self):
-        return self.inputCount
-
-    def outputs(self):
-        return self.outputCount
-
-    def visualize(self, gene, duration, useDone=None, seed=None):
-        gene.visualize()
-        plt.pause(duration/100)
-        self.model.visualize()
-        plt.pause(duration/100)
-
 # Old function to check the behavior of genomes being allocated to species.
 # The outcome showed a predictable distribution of genomes. Later NEAT test verifies. Works well.
 def speciationTest():
@@ -275,19 +165,30 @@ def generativeModelTest():
 
 # Testing our random weight optimization using NEAT without merging or speciation. Works.
 def RandomOptim():
+    envGenome = ProbabilisticGenome(1,1)
+    for graphs in range(10):
+        i = 0
+        while i < 15:
+            i += envGenome.mutate(i)
+        env = VariableEnv(envGenome, datapointCount=1000)
 
-    optim = ProbabilisticNEAT(iterations=1000000000000, maxPopSize=200, batchSize=200,
-                              useMerging=False, useSpeciation=False, weightsOnly=True)
-    #env = GymEnv('LunarLander-v2')
-    env = VariableEnv(inputs=2, outputs=3, mutations=5, datapointCount=1000)
-    # genome = ProbabilisticGenome(env.inputs(), env.outputs())
-    genome = env.model.copy()
-    for _ in range(1):
-        genome.tweakWeight()
-    optim.run(genome, env)
+        model = envGenome.copy()
+        for i in range(15):
+            model.tweakWeight()
+
+        # genome = ProbabilisticGenome(env.inputs(), env.outputs())
+
+        optim = ProbabilisticNEAT(iterations=40, maxPopSize=100, batchSize=10,
+                                  useMerging=False, useSpeciation=False, weightsOnly=True)
+        best, loss = optim.run(model, env, debug=False, showProgressBar=True)
+
+        plt.plot(range(len(loss)), loss)
+        print(best.fitness)
+    plt.show()
+    plt.pause(1000)
 
 # Testing our structure comparison metric. Kinda works.
-def compareStructureTest():
+def structuralDistanceTest():
     genome = ProbabilisticGenome(1, 1)
     for i in range(10):
         genome.mutate(i)
@@ -320,7 +221,7 @@ def mseLossTest():
     genome2.visualize()
     plt.pause(10000)
 
-# Test storing and retrieving Genomes on and from the hard disk. Works.
+# Testing storing and retrieving Genomes on and from the hard disk. Works.
 def genomeStorageTest():
     genome = ProbabilisticGenome(1, 1)
     for i in range(10):
@@ -338,7 +239,25 @@ def genomeStorageTest():
     plt.pause(3)
     genome.generate()
 
-# Test storing and retrieving test data on and from hard disk.
-def dataStorageTest():
-    pass
-dataStorageTest()
+# Testing the new structural distance metric that performs greedy tree search on the mapping space. Works well.
+def structuralDistanceTest2():
+    genome = ProbabilisticGenome(1, 1)
+    for i in range(10):
+        genome.mutate(i)
+    genome2 = genome.copy()
+    genome.visualize()
+    print(StructuralDistance.DistanceMetric.run(genome, genome2, 20000, typeMatters=True))
+    plt.pause(3)
+    successes = 0
+    for i in range(10):
+        success = 0
+        while (success<=0):
+            success = genome2.mutate(successes)
+            successes += success
+    genome2.visualize()
+    print(StructuralDistance.DistanceMetric.run(genome, genome2, 20000, typeMatters=True))
+    plt.pause(10000)
+
+# genomes = Analysis.readGenomesFromCsv()
+# Analysis.KLvsDistance(genomes=genomes)
+Analysis.plotData()

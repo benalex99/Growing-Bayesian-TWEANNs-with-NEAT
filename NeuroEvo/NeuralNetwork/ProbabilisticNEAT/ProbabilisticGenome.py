@@ -149,10 +149,15 @@ class ProbabilisticGenome(Genome.Genome):
         # create two new edges that connect the previous two nodes via the new node
         self.specifiyEdge(edge, node, hMarker)
 
-    # Tweak a random weight by adding Gaussian noise
+    # Tweak a random weight by adding Gaussian noise or resetting it
+    # (Original neat uses uniform distribution)
     def tweakWeight(self, variance=1):
-        indexWeight = random.randint(0, len(self.edges)-1)
-        self.edges[indexWeight].weight = self.edges[indexWeight].weight + np.random.normal(0, variance)
+        resetWeight = Categorical(probs=torch.tensor([0.9,0.1]))
+        for edge in self.edges:
+            if resetWeight.sample([1])[0].item() == 1:
+                edge.weight = Normal(0, variance).sample([1])[0].item()
+            else:
+                edge.weight = edge.weight + Normal(0, variance).sample([1])[0].item()
 
     # Add the incoming and outgoing edges to the newly added intervening Node
     def specifiyEdge(self, edge, newNode, hMarker):

@@ -1,0 +1,10 @@
+0,0,False,True,"[4, 7, 8]",,6,1
+1,7,True,False,[],,6,0
+2,3,False,False,"[5, 1]",,5,2
+3,6,False,False,[1],,4,3
+4,5,False,False,[3],,5,2
+5,4,False,False,"[4, 3]",,4,1
+6,2,False,False,[2],,5,1
+7,1,False,False,[6],,2,1
+8,1,False,False,[9],,5,1
+9,2,False,False,[2],,4,1

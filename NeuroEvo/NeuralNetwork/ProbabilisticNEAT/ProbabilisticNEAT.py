@@ -2,6 +2,8 @@ import copy
 import math
 import random
 import time
+from pyro.distributions import *
+from tqdm import tqdm
 
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticGenome import ProbabilisticGenome
 
@@ -43,13 +45,16 @@ class ProbabilisticNEAT:
         self.maxFitnesses = []
         return
 
-    def run(self, rootGenome, env):
+    def run(self, rootGenome, env, debug=False, showProgressBar=False, visualize=False):
         self.population.append(rootGenome)
-        self.visualize(rootGenome, env, 500, useDone=False)
+        if visualize:
+            self.visualize(rootGenome, env, 500, useDone=False)
 
-        for iteration in range(self.iterations):
-            print("Iteration: " + str(iteration))
-            ntime = time.time()
+        loss = []
+        for iteration in tqdm(range(self.iterations), desc="Optimizing", disable=not showProgressBar):
+            if debug:
+                print("Iteration: " + str(iteration))
+                ntime = time.time()
 
             # Assign values to the mutations and add them to the population
             env.test(self.population, self.episodeDur, seed=iteration)
@@ -61,24 +66,27 @@ class ProbabilisticNEAT:
             self.mutationBasedOnSharedFitness(self.useSpeciation)
 
             self.population.sort(key=lambda x: x.fitness, reverse=True)
-            self.median = self.population[int(len(self.population) / 2) - 1].fitness
 
-            print("Took : " + str(time.time() - ntime))
-            print("Median score: " + str(self.median))
-            print("Best Score: " + str(self.bestGene().fitness))
-            counts = []
-            for speciesEntry in self.species:
-                counts.append(len(speciesEntry))
-            print("Batch Size: " + str(len(self.population)))
-            print("Population Size: " + str(len(self.population)+sum(counts)))
-            print("Species: " + str(len(self.species)))
-            print("Species Sum: " + str(sum(counts)))
-            print("Species counts: " + str(counts) + "\n")
-            if self.showProgress[0] > 0 and iteration % self.showProgress[0] == 0:
-                self.visualize(self.bestGene(), env, self.showProgress[1], seed=iteration)
+            loss.append(self.bestGene().fitness)
+            if debug:
+                self.median = self.population[int(len(self.population) / 2) - 1].fitness
+
+                print("Took : " + str(time.time() - ntime))
+                print("Median score: " + str(self.median))
+                print("Best Score: " + str(self.bestGene().fitness))
+                counts = []
+                for speciesEntry in self.species:
+                    counts.append(len(speciesEntry))
+                print("Batch Size: " + str(len(self.population)))
+                print("Population Size: " + str(len(self.population)+sum(counts)))
+                print("Species: " + str(len(self.species)))
+                print("Species Sum: " + str(sum(counts)))
+                print("Species counts: " + str(counts) + "\n")
+                if self.showProgress[0] > 0 and iteration % self.showProgress[0] == 0:
+                    self.visualize(self.bestGene(), env, self.showProgress[1], seed=iteration)
 
         # Return the best gene from the population
-        return self.bestGene()
+        return self.bestGene(), loss
 
     def debug(self):
         counts = []
@@ -221,6 +229,12 @@ class ProbabilisticNEAT:
                 if random.randint(0, 1) < 1:
                     # Randomly assign one of either genomes weights
                     fitterGenome.edges[index].weight = edge.weight
+                    # Chance that a gene is disabled if either of the parents have
+                    if not edge.enabled or not fitterGenome.edges[index].enabled:
+                        if Binomial(1, 0.75).sample([1])[0].item() == 0:
+                            fitterGenome.edges[index].enabled = True
+                        else:
+                            fitterGenome.edges[index].enabled = False
             else:
                 disjoint = True
                 # For disjoint and excess edges,

@@ -1,0 +1,8 @@
+0,0,False,True,"[7, 4]",,6,1
+1,7,True,False,[],,6,0
+2,6,False,False,[1],,5,2
+3,2,False,False,[4],,4,1
+4,3,False,False,[6],,5,2
+5,5,False,False,[2],,4,1
+6,4,False,False,[5],,4,2
+7,1,False,False,"[3, 2]",,2,1
