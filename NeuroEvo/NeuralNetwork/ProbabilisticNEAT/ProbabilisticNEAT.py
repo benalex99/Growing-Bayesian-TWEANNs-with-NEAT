@@ -5,6 +5,7 @@ import time
 from pyro.distributions import *
 from tqdm import tqdm
 
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.AdvancedNodeGene import NodeType
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticGenome import ProbabilisticGenome
 
 
@@ -13,7 +14,8 @@ class ProbabilisticNEAT:
 
     def __init__(self, iterations, maxPopSize, batchSize, episodeDur=400, showProgress=(0, 0),
                  excessImp=0.5, disjointImp=0.5, weightImp=1, inclusionThreshold=5,
-                 useMerging=True, useSpeciation=True, weightsOnly=False):
+                 useMerging=True, useSpeciation=True, weightsOnly=False,
+                 useDistributions=True):
         """
 
         iterations (int):
@@ -43,6 +45,7 @@ class ProbabilisticNEAT:
         self.useSpeciation = useSpeciation
         self.weightsOnly = weightsOnly
         self.maxFitnesses = []
+        self.useDistributions = useDistributions
         return
 
     def run(self, rootGenome, env, debug=False, showProgressBar=False, visualize=False):
@@ -50,6 +53,7 @@ class ProbabilisticNEAT:
         if visualize:
             self.visualize(rootGenome, env, 500, useDone=False)
 
+        bestGenes = []
         loss = []
         for iteration in tqdm(range(self.iterations), desc="Optimizing", disable=not showProgressBar):
             if debug:
@@ -57,17 +61,23 @@ class ProbabilisticNEAT:
                 ntime = time.time()
 
             # Assign values to the mutations and add them to the population
+            # print("test")
             env.test(self.population, self.episodeDur, seed=iteration)
 
             if self.useSpeciation:
+                # print("speciation")
                 self.speciation()
+                # print("sharingFitness")
                 self.sharingFitness()
+            # print("murderGenomes")
             self.murderGenomes(self.useSpeciation)
+            # print("mutationBasedOnSharedFitness")
             self.mutationBasedOnSharedFitness(self.useSpeciation)
-
+            # print("finish \n")
             self.population.sort(key=lambda x: x.fitness, reverse=True)
 
             loss.append(self.bestGene().fitness)
+            bestGenes.append(self.bestGene())
             if debug:
                 self.median = self.population[int(len(self.population) / 2) - 1].fitness
 
@@ -82,11 +92,11 @@ class ProbabilisticNEAT:
                 print("Species: " + str(len(self.species)))
                 print("Species Sum: " + str(sum(counts)))
                 print("Species counts: " + str(counts) + "\n")
-                if self.showProgress[0] > 0 and iteration % self.showProgress[0] == 0:
-                    self.visualize(self.bestGene(), env, self.showProgress[1], seed=iteration)
+            if self.showProgress[0] > 0 and iteration % self.showProgress[0] == 0:
+                self.visualize(self.bestGene(), env, self.showProgress[1], seed=iteration)
 
         # Return the best gene from the population
-        return self.bestGene(), loss
+        return self.bestGene(), loss, bestGenes
 
     def debug(self):
         counts = []
@@ -131,7 +141,7 @@ class ProbabilisticNEAT:
                 self.maxFitnesses.pop(self.species.index(species))
                 self.species.remove(species)
             for index, (species, maxFitness) in enumerate(zip(self.species, self.maxFitnesses)):
-                if maxFitness[1] > 15:
+                if maxFitness[1] > 15 and len(self.species) > 1:
                     self.maxFitnesses.pop(index)
                     self.species.pop(index)
         else:
@@ -151,10 +161,13 @@ class ProbabilisticNEAT:
 
         mutations = []
         if useSpeciation:
+            # print("CalculateMutations")
             mutationIterations = self.calculateMutations()
+            # print("Generating mutations")
             for species, iterations in zip(self.species, mutationIterations):
                 for _ in range(iterations):
                     mutations.append(self.newGenome(species[random.randint(0, len(species) - 1)]))
+            # print("Updating self.population")
             self.population = mutations
         else:
             for _ in range(self.batchSize):
@@ -170,6 +183,7 @@ class ProbabilisticNEAT:
             list: A List of the amount of Mutations each Species get
         """
         summedFitnesses = self.sumFitnessValue()
+
         mutationNumbers = []
         if(sum(summedFitnesses) > 0):
             for index, fitness in enumerate(summedFitnesses):
@@ -206,9 +220,8 @@ class ProbabilisticNEAT:
 
     @staticmethod
     def merge(firstGenome, secondGenome):
-        """The merging process takes both parent Genomes and merge it together. Genes with the same historical Marker
-        get randomly chosen by one of the parent Genome. Any other Disjoint or Excess Genes get added to the merged
-        Genome
+        """The merging process takes both parent Genomes and merges them together. Genes with the same historical Marker
+        get randomly chosen by one of the parent Genome. Any other Disjoint or Excess Genes get added to the new Genome
 
         Args:
             firstGenome (ProbabilisticGenome): Parent Genome 1
@@ -227,41 +240,39 @@ class ProbabilisticNEAT:
                 break
             if edge.hMarker == fitterGenome.edges[min(index, len(fitterGenome.edges) - 1)].hMarker and not disjoint:
                 if random.randint(0, 1) < 1:
+                    fEdge = fitterGenome.edges[index]
                     # Randomly assign one of either genomes weights
-                    fitterGenome.edges[index].weight = edge.weight
-                    # Chance that a gene is disabled if either of the parents have
-                    if not edge.enabled or not fitterGenome.edges[index].enabled:
+                    fEdge.weight = edge.weight
+                    # Chance that a gene is disabled if either of the parents have a disabled gene
+                    if not edge.enabled or not fitterGenome.edges[index].enabled \
+                            and fitterGenome.nodes[fEdge.fromNr].type == NodeType.Relu \
+                            and fitterGenome.nodes[fEdge.toNr].type == NodeType.Relu:
                         if Binomial(1, 0.75).sample([1])[0].item() == 0:
-                            fitterGenome.edges[index].enabled = True
+                            if not fitterGenome.edges[index].enabled:
+                                fitterGenome.nodes[fEdge.fromNr].outputtingTo.append(fEdge.toNr)
+                            fEdge.enabled = True
                         else:
-                            fitterGenome.edges[index].enabled = False
+                            if fitterGenome.edges[index].enabled:
+                                fitterGenome.nodes[fEdge.fromNr].outputtingTo.remove(fEdge.toNr)
+                            fEdge.enabled = False
             else:
                 disjoint = True
                 # For disjoint and excess edges,
                 if firstGenome.fitness == secondGenome.fitness:
-                    # if the receiving or sending node does not exist, add it
-                    # TODO: Adding redundant nodes?
-                    # while edge.toNr >= len(fitterGenome.nodes) or edge.fromNr >= len(fitterGenome.nodes):
-                    #     fitterGenome.nodes.append(NodeGene(nodeNr=len(fitterGenome.nodes)))
 
-                    # Lack of clarity in paper. Random carrying over results in cycles.
-                    # We only carry over edges for which nodes already exist, to ensure alignment and connectivity
+                    # Lack of clarity in paper. Random carrying over may result in cycles.
+                    # We only carry over edges for which nodes already exist, to ensure alignment
                     if edge.toNr >= len(fitterGenome.nodes) or edge.fromNr >= len(fitterGenome.nodes):
                         continue
-                    # Check if classes align
-                    if edge.fromClass != None:
-                        if fitterGenome.nodes[edge.fromNr].classCount < edge.fromClass:
-                            continue
-                    # Check if classes align
-                    if edge.toClass != None:
-                        if fitterGenome.nodes[edge.toNr].classCount < edge.toClass:
-                            continue
+
+                    if fitterGenome.nodes[edge.fromNr].type != NodeType.Relu or \
+                            fitterGenome.nodes[edge.toNr].type != NodeType.Relu:
+                        continue
 
                     # Check if the receiving neuron is not in a lower or equal layer
                     # And if the connection already exists
-                    # TODO: New nodes have standard 0 layer assignment
-                    if (fitterGenome.nodes[edge.fromNr].layer <= fitterGenome.nodes[edge.toNr].layer or
-                            not fitterGenome.edgeExists(edge)):
+                    if (not fitterGenome.nodes[edge.fromNr].layer <= fitterGenome.nodes[edge.toNr].layer or
+                            fitterGenome.edgeExists(edge)):
                         continue
 
                     fitterGenome.edges.append(copy.deepcopy(edge))
@@ -288,7 +299,7 @@ class ProbabilisticNEAT:
             newSpecie = [genome]
             if len(species) > 5:
                 species.sort(key=lambda x: x.fitness, reverse=True)
-                newSpecie.append(species[0])
+                newSpecie = [species[0]]
             newSpecies.append(newSpecie)
         self.species = newSpecies
 
@@ -450,14 +461,18 @@ class ProbabilisticNEAT:
         if random.randint(0, 1) < 1 or len(self.population) <= 3 or not self.useMerging:
             g = parentGenome.copy()
             success = 0
+            # print("Mutate")
             while success <= 0:
-                success = g.mutate(self.hMarker, weightsOnly=self.weightsOnly)
+                # print(success)
+                success = g.mutate(self.hMarker, weightsOnly=self.weightsOnly, useDistributions= self.useDistributions)
             self.hMarker += success
         else:
+            # print("Merge")
             g1 = parentGenome
             g2 = self.population[random.randint(0, len(self.population) - 1)]
             while g1 == g2:
                 g2 = self.population[random.randint(0, len(self.population) - 1)]
             g = self.merge(g1, g2)
         g.fitness = -math.inf
+        # print("Done with new Genome")
         return g

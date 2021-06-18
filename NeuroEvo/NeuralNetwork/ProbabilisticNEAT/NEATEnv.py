@@ -9,8 +9,9 @@ import torch
 
 
 class VariableEnv:
-    def __init__(self, model = ProbabilisticGenome(1, 1), datapointCount = 1000, detail=20):
+    def __init__(self, model = ProbabilisticGenome(1, 1), datapointCount = 1000, detail=20, criterion="me"):
         self.model = model
+        self.criterion = criterion
 
         # Generate a distribution
         self.input = torch.ones((datapointCount, model.inputSize), device=torch.device('cuda'))
@@ -30,18 +31,24 @@ class VariableEnv:
         # Test those that have just been filtered out
         for genome in tests:
             predictions = genome.generate(self.input)
-            genome.fitness = -VariableEnv.mse_loss(self.generated, predictions, detail=self.detail)
+            if self.criterion == "KL":
+                genome.fitness = -VariableEnv.discretizedKullbackLeibler(self.generated, predictions, detail=self.detail)
+            elif self.criterion == "me":
+                genome.fitness = -VariableEnv.me_loss(self.generated, predictions, detail=self.detail)
+            elif self.criterion == "mePenalized":
+                genome.fitness = -VariableEnv.penalizedMe_loss(genome, self.generated, predictions, detail=self.detail)
 
     def testOne(self, genome):
         predictions = genome.generate(self.input)
-        return -VariableEnv.mse_loss(self.generated, predictions, detail=self.detail)
+        return -VariableEnv.me_loss(predictions, self.generated, detail=self.detail)
 
     @staticmethod
     def discretizedKullbackLeibler(targets, predictions, detail=20, punishIgnorance=False):
         """
         :param targets: Samples of the environment P
         :param predictions: Samples of the model Q
-        :param detail: The detail at which we compare. Determines the amount of buckets. Can be any positive real.
+        :param detail: The detail with which we discretize the distributions. Determines the amount of buckets.
+                        Can be any positive real.
         :param punishIgnorance: Whether to punish a disjoint probability space
                                     (Samples from P that have a probability of 0 according to Q)
         :return: The approximated Kullback-Leibler divergence KL(P||Q)
@@ -62,36 +69,54 @@ class VariableEnv:
                 if not q.keys().__contains__(x):
                     lostPProb += p[x]
             klDivergence *= 1+lostPProb
-            #                                                           __           __
-            # If all predictions are disjoint, there is nothing we can do \ ( ^-^ ) /
+            #                                                                  __           __
+            # If all predictions are non-overlapping, there is nothing we can do \ ( ^-^ ) /
             if lostPProb >= 1:
                 klDivergence = 1000000  # A large value because NEAT doesnt handle infinity well
 
         return klDivergence
 
     @staticmethod
-    def mse_loss(predictions, targets, detail=20):
+    def me_loss(predictions, targets, detail=20):
         '''
         We do this because KL-divergence is not suited for structure optimization. KL-divergence does not handle
         distributions with differing supports.
         :param targets: Samples of the environment P
         :param predictions: Samples of the model Q
-        :param detail: The detail at which we compare. Determines the amount of buckets. Can be any positive real.
-        :return: The mse_loss of the prediction and target class probability distributions
+        :param detail: The detail at which we discretize the distributions. Determines the amount of buckets. Can be any positive real.
+        :return: The me_loss of the prediction and target class probability distributions
         '''
         p, q = VariableEnv.discretizedDistributionProbs(targets, predictions, detail)
-        # Calculate the MSE-loss
+        # Calculate the ME-loss
         loss = 0
         count = 0
-        for x in list(q.keys()) + list(p.keys()):
+        # for x in list(q.keys()) + list(p.keys()):
+        for x in list(dict.fromkeys(list(q.keys()) + list(p.keys()))):
             count += 1
             if p.keys().__contains__(x) and q.keys().__contains__(x):
-                loss += abs(q[x] - p[x]) #** 2
+                loss += abs(q[x] - p[x])
             elif q.keys().__contains__(x):
-                loss += abs(q[x] - 0) #** 2
+                loss += abs(q[x] - 0)
             else:
-                loss += abs(0 - p[x]) #** 2
-        return loss / count
+                loss += abs(0 - p[x])
+        return loss / 2 #count
+
+    @staticmethod
+    def penalizedMe_loss(model, predictions, targets, detail=20):
+        '''
+        This criterion also takes the amount of parameters into account. It penalizes larger models.
+        :param targets: Samples of the environment P
+        :param predictions: Samples of the model Q
+        :param detail: The detail with which we discretize the distributions. Determines the amount of buckets.
+                        Can be any positive real.
+        :return: The mse_loss of the prediction and target class probability distributions
+        '''
+        mse = VariableEnv.me_loss(predictions, targets, detail)
+        params = 0
+        for edge in model.edges:
+            if edge.enabled:
+                params += 1
+        return mse + params
 
     @staticmethod
     def discretizedDistributionProbs(targets, predictions, detail):
@@ -103,12 +128,18 @@ class VariableEnv:
         Then the class occurrences are counted and their probabilities calculated.
         :param targets: Samples of the environment P
         :param predictions: Samples of the model Q
-        :param detail: The detail at which we compare. Determines the amount of classes. Can be any positive real.
+        :param detail: The detail with which we compare. Determines the amount of classes. Can be any positive real.
         :return: Discretize probability distributions p and q
         '''
 
         # Normalize each dimension across all samples.
-        max = torch.stack([predictions, targets]).max(0)[0][0]
+        try:
+            max = torch.stack([predictions, targets]).max(0)[0][0]
+        except RuntimeError:
+            print(predictions)
+            print(targets)
+            max = torch.stack([predictions, targets]).max(0)[0][0]
+
         min = torch.stack([predictions, targets]).min(0)[0][0]
         diff = max - min
         diff[diff==0] = 1 # Don't divide by zero
@@ -146,10 +177,10 @@ class VariableEnv:
 
         return p, q
 
-    def inputSize(self):
+    def inputs(self):
         return self.model.inputSize
 
-    def outputSize(self):
+    def outputs(self):
         return self.model.outputSize
 
     def visualize(self, gene, duration, useDone=None, seed=None):

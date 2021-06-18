@@ -2,6 +2,7 @@ import copy
 import math
 import random
 
+from matplotlib import pyplot as plt
 from pyro.infer import SVI, Trace_ELBO
 from tqdm import tqdm
 from pyro.distributions import *
@@ -37,7 +38,7 @@ class ProbabilisticGenome(Genome.Genome):
         self.fitness = -math.inf
 
     # Mutate by adding an edge or node, or tweak a weight
-    def mutate(self, hMarker, weightsOnly=False):
+    def mutate(self, hMarker, weightsOnly=False, useDistributions=True):
         if weightsOnly:
             self.tweakWeight(1)
             return 1
@@ -48,13 +49,15 @@ class ProbabilisticGenome(Genome.Genome):
             return 1
 
         # Choose the type of mutation and execute it
-        randomMutate = Categorical(torch.Tensor([0.6,0.3,0.1])).sample([1])[0]
+        randomMutate = Categorical(torch.Tensor([0.6, 0.3, 0.1])).sample([1])[0]
         if randomMutate == 0:
+            # print("AddEdge")
             return self.addEdge(hMarker)
         elif randomMutate == 1:
-            self.addNode(hMarker)
-            return 3
+            # print("AddNode")
+            return self.addNode(hMarker, useDistributions=useDistributions)
         elif randomMutate == 2:
+            # print("TweakWeight")
             self.tweakWeight()
             return 1
 
@@ -77,16 +80,8 @@ class ProbabilisticGenome(Genome.Genome):
         # Attempt to find a valid new edge for maxTries times
         invalid = True
         maxTries = 5000
-        invalids1 = 0
-        invalids2 = 0
         while not self.validEdge(newEdge) or invalid:
-            # if not self.validEdge(newEdge):
-            #     invalids1 += 1
-            # if invalid:
-            #     invalids2 += 1
             if(maxTries == 0):
-                # print("Invalid1: " + str(invalids1))
-                # print("Invalid2: " + str(invalids2))
                 return 0
             maxTries -= 1
 
@@ -135,24 +130,32 @@ class ProbabilisticGenome(Genome.Genome):
         return 1
 
     # Replace an edge by two edges with a node in between
-    def addNode(self, hMarker):
+    def addNode(self, hMarker, useDistributions=True):
         # Search for an active edge to replace
         edge = self.edges[random.randint(0, len(self.edges)-1)]
-        while(not edge.enabled):
+        tries = 0
+        while(not edge.enabled and tries < 5000):
+            tries += 1
             edge = self.edges[random.randint(0, len(self.edges) - 1)]
+        if tries >= 5000:
+            return 0
 
         # Add a node with random node type between the previously connected nodes
-        node = AdvancedNodeGene.AdvancedNodeGene(nodeNr=len(self.nodes), type=NodeType.random())
+        if useDistributions:
+            node = AdvancedNodeGene.AdvancedNodeGene(nodeNr=len(self.nodes), type=NodeType.random())
+        else:
+            node = AdvancedNodeGene.AdvancedNodeGene(nodeNr=len(self.nodes), type=NodeType.Relu)
         self.nodes.append(node)
 
         # Remove the old edge and
         # create two new edges that connect the previous two nodes via the new node
         self.specifiyEdge(edge, node, hMarker)
+        return 3
 
     # Tweak a random weight by adding Gaussian noise or resetting it
-    # (Original neat uses uniform distribution)
+    # (Original neat uses uniform distribution with explicit boundaries)
     def tweakWeight(self, variance=1):
-        resetWeight = Categorical(probs=torch.tensor([0.9,0.1]))
+        resetWeight = Categorical(probs=torch.tensor([0.9, 0.1]))
         for edge in self.edges:
             if resetWeight.sample([1])[0].item() == 1:
                 edge.weight = Normal(0, variance).sample([1])[0].item()
@@ -161,7 +164,8 @@ class ProbabilisticGenome(Genome.Genome):
 
     # Add the incoming and outgoing edges to the newly added intervening Node
     def specifiyEdge(self, edge, newNode, hMarker):
-        # Bookkeeping
+        # Deactivate the edge gene, remove the receiving node entry from the sending node
+        # and add the new receiving node entry to the sending node.
         edge.deactivate()
         self.nodes[edge.fromNr].outputtingTo.remove(edge.toNr)
         self.nodes[edge.fromNr].outputtingTo.append(newNode.nodeNr)
@@ -363,15 +367,16 @@ class ProbabilisticGenome(Genome.Genome):
             # If we are in the last layer, sample our output nodes predictions with our observations
             if (i == len(layers) - 1):
                 for nodeNr in layer:
-                    if len(self.nodes[nodeNr].inputs) == 0:
-                        self.nodes[nodeNr].inputs.append([torch.zeros(len(inputData), device=torch.device('cuda')),0])
-                    if not self.nodes[nodeNr].input and self.nodes[nodeNr].type != NodeType.Multiplication:
-                        # and self.nodes[nodeNr].type != NodeType.Relu
-                        y = self.nodes[nodeNr].function().sample([1])[0]
-                    else:
-                        y = self.nodes[nodeNr].function()
-                    torch.reshape(y, (len(y), -1))
-                    outputs.append(y)
+                    if self.nodes[nodeNr].output:
+                        if len(self.nodes[nodeNr].inputs) == 0:
+                            self.nodes[nodeNr].inputs.append([torch.zeros(len(inputData), device=torch.device('cuda')), 0])
+                        if not self.nodes[nodeNr].input and self.nodes[nodeNr].type != NodeType.Multiplication:
+                            # and self.nodes[nodeNr].type != NodeType.Relu
+                            y = self.nodes[nodeNr].function().sample([1])[0]
+                        else:
+                            y = self.nodes[nodeNr].function()
+                        torch.reshape(y, (len(y), -1))
+                        outputs.append(y)
 
                 outputs = torch.stack(outputs, dim=1)
                 continue
@@ -379,13 +384,14 @@ class ProbabilisticGenome(Genome.Genome):
             # For each node in the layer calculate the output and distribute it to the other nodes
             for nodeNr in layer:
                 # Calculate the output
+                if len(self.nodes[nodeNr].inputs) == 0:
+                    continue
+
                 if not self.nodes[nodeNr].input and self.nodes[nodeNr].type != NodeType.Multiplication:
                     #self.nodes[nodeNr].type != NodeType.Relu and
                     output = self.nodes[nodeNr].function().sample([1])[0]
                     if(self.nodes[nodeNr].type == NodeType.Dirichlet or self.nodes[nodeNr].type == NodeType.Categorical):
                         output = output.T
-
-
                 else:
                     output = self.nodes[nodeNr].function()
                 # Distribute weighted output to other nodes

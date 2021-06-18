@@ -6,6 +6,8 @@ from gym.spaces import Box, Discrete
 import time
 import numpy as np
 
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.ProbabilisticGenome import ProbabilisticGenome
+
 
 class GymEnv:
     def __init__(self, envName):
@@ -31,19 +33,30 @@ class GymEnv:
                 observation, reward, done, info = self.env.step(action)
                 cumReward += reward
             genome.fitness = cumReward
-        print("Classifying took: " + str(cumTime))
+        # print("Classifying took: " + str(cumTime))
 
-    def finalTest(self, genome, seed= 0):
-        nn = genome.toNN()
-        self.env.seed(seed)
-        random.seed(seed)
-        observation = self.env.reset()
-        for _ in range(1000000):
-            self.env.render()
-            action = self.getAction(nn, observation)
-            observation, reward, done, info = self.env.step(action)
-            if (done):
-                break
+    def finalTest(self, genome, seed=0):
+        if isinstance(genome, ProbabilisticGenome):
+            self.env.seed(seed)
+            random.seed(seed)
+            observation = self.env.reset()
+            for _ in range(1000000):
+                self.env.render()
+                action = genome.generate(observation)
+                observation, reward, done, info = self.env.step(action)
+                if (done):
+                    break
+        else:
+            nn = genome.toNN()
+            self.env.seed(seed)
+            random.seed(seed)
+            observation = self.env.reset()
+            for _ in range(1000000):
+                self.env.render()
+                action = self.getAction(nn, observation)
+                observation, reward, done, info = self.env.step(action)
+                if (done):
+                    break
 
     def inputs(self):
         if(isinstance(self.env.observation_space, Discrete)):

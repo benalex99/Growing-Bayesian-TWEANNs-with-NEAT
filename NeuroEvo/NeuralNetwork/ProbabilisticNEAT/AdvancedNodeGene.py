@@ -1,7 +1,7 @@
 import ast
 
 from NeuroEvo.Genome.NodeGene import NodeGene
-from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.CustomDistr import ReluDistr, LeakyReluDistr, Identity
+from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.CustomDistr import ReluDistr, Identity
 from pyro.distributions import *
 from enum import Enum
 import random
@@ -60,7 +60,7 @@ class AdvancedNodeGene(NodeGene):
         for input in self.inputs:
             output.append(input[0])
         output = torch.stack(output, dim=0)
-        output = torch.sum(output, dim= 0)
+        output = torch.sum(output, dim=0)
         # output = torch.relu(output)
         self.inputs = []
         # return output
@@ -78,6 +78,7 @@ class AdvancedNodeGene(NodeGene):
     def categorical(self):
         # Assign inputs to parameters
         inputs = torch.zeros((self.classCount, len(self.inputs[0][0])), device=torch.device('cuda'))
+
         for input in self.inputs:
             # Parameter index: input[1]
             # Parameter value: input[0]

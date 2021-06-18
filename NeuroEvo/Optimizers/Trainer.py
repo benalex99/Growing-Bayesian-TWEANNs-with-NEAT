@@ -14,7 +14,7 @@ class Trainer:
     # Train networks using the optimizer
     @staticmethod
     def train(optimizer, env):
-        rootGenome = NEATGenome(env.inputSize(), env.outputSize())
+        rootGenome = NEATGenome(env.inputs(), env.outputs())
         return optimizer.run(rootGenome, env)
 
     # Test networks, do some benchmarking

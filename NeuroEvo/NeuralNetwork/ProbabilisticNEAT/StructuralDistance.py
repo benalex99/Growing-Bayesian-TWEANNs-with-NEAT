@@ -102,7 +102,7 @@ class NodeMapping():
             if (len(node.outputtingTo) + len(otherNode.outputtingTo)) == 0:
                 overlap[index] = 1
 
-        # Difference between possible alignment and actual alignment
+        # Difference between possible alignment and actual alignment. Higher overlap means lower distance.
         self.score = len(self.largerGenome.nodes)-sum(overlap).item()
         return self.score
 

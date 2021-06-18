@@ -3,6 +3,7 @@ import math
 import random
 import time
 
+import pyro
 from pyro.distributions import Binomial
 
 from NeuroEvo.Genome.NodeGene import NodeGene
@@ -46,10 +47,11 @@ class NEAT:
         self.maxFitnesses = []
         return
 
-    def run(self, rootGenome, env):
+    def run(self, rootGenome, env, seed=0):
         self.population.append(rootGenome)
         self.visualize(rootGenome, env, 500, useDone=False)
 
+        pyro.set_rng_seed(seed)
         for iteration in range(self.iterations):
             print("Iteration: " + str(iteration))
             ntime = time.time()
@@ -127,7 +129,7 @@ class NEAT:
             self.species.remove(species)
 
         for index, (species, maxFitness) in enumerate(zip(self.species, self.maxFitnesses)):
-            if maxFitness[1] > 15:
+            if maxFitness[1] > 15 and len(self.species) > 1:
                 self.maxFitnesses.pop(index)
                 self.species.pop(index)
 
@@ -212,13 +214,19 @@ class NEAT:
 
             if edge.hMarker == fitterGenome.edges[min(index, len(fitterGenome.edges) - 1)].hMarker and not disjoint:
                 if random.randint(0, 1) < 1:
+                    fEdge = fitterGenome.edges[index]
                     # Randomly assign one of either genomes weights
-                    fitterGenome.edges[index].weight = edge.weight
+                    fEdge.weight = edge.weight
+                    # Chance that a gene is disabled if either of the parents have
                     if not edge.enabled or not fitterGenome.edges[index].enabled:
                         if Binomial(1, 0.75).sample([1])[0].item() == 0:
-                            fitterGenome.edges[index].enabled = True
+                            if not fitterGenome.edges[index].enabled:
+                                fitterGenome.nodes[fEdge.fromNr].outputtingTo.append(fEdge.toNr)
+                            fEdge.enabled = True
                         else:
-                            fitterGenome.edges[index].enabled = False
+                            if fitterGenome.edges[index].enabled:
+                                fitterGenome.nodes[fEdge.fromNr].outputtingTo.remove(fEdge.toNr)
+                            fEdge.enabled = False
             else:
                 disjoint = True
                 if firstGenome.fitness == secondGenome.fitness:
@@ -418,7 +426,10 @@ class NEAT:
     def newGenome(self, parentGenome):
         if random.randint(0, 1) < 1 or len(self.population) <= 3:
             g = parentGenome.copy()
-            self.hMarker += g.mutate(self.hMarker)
+            success = 0
+            while success <= 0:
+                success = g.mutate(self.hMarker)
+            self.hMarker += success
         else:
             g1 = parentGenome
             g2 = self.population[random.randint(0, len(self.population) - 1)]
