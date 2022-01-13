@@ -29,6 +29,8 @@ class GymEnv:
                     break
                 nTime = time.time()
                 action = self.getAction(nn, observation)
+                if action >=4:
+                    genome.visualize()
                 cumTime += time.time() - nTime
                 observation, reward, done, info = self.env.step(action)
                 cumReward += reward

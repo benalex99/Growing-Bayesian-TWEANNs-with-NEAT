@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from blitz.modules import BayesianLinear
 
 # Neural network class for running predictions on the GPU
 class NeuralNetwork(nn.Module):
@@ -15,14 +14,20 @@ class NeuralNetwork(nn.Module):
         for fromLayer in layers:
             toLayers = []
             for weights, biases in fromLayer:
+                # Start minimal layer of connections
                 linearL = nn.Linear(1, 1)
                 # linearL = BayesianLinear(len(weights),len(weights[0]))
+
+                # Fill up the layer with its weights and biases
                 with torch.no_grad():
                     linearL.weight = torch.nn.Parameter(weights)
                     linearL.bias = torch.nn.Parameter(biases)
                     linearL.bias.requires_grad = False
                 linearL.to(self.cuda)
+                # Appended here is the layer of connections leading
+                # from "fromLayer" to one other layer
                 toLayers.append(linearL)
+            # Appended here is the list of layers from "fromLayer" to every other layer
             self.fromToLayers.append(toLayers)
 
             self.outputs = []

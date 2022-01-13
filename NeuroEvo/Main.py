@@ -6,7 +6,6 @@ from NeuroEvo.NeuralNetwork.ProbabilisticNEAT import UnitTests
 from NeuroEvo.NeuralNetwork.ProbabilisticNEAT.Analysis import Analysis
 from NeuroEvo.Optimizers.NEAT.NEATGenome import NEATGenome
 from NeuroEvo.Optimizers.QLearner.QLearner import QPolicy
-from NeuroEvo.NeuralNetwork.EnsembleNN.DiscreteWeightBNN import DWBNN
 
 
 def Qlearning():
@@ -27,27 +26,9 @@ def nnToGenome():
     genome.weightsFromNN(nn)
     time.sleep(1000)
 
-# UnitTests.neatTest()
+UnitTests.neatTest()
 # UnitTests.meLossTest()
 
 # genomes = Analysis.readGenomesFromCsv()
 
-# This runs the tests for the first research question
-# Analysis.LossvsDistanceTest(genomes=genomes)
-# Analysis.NeatVsNormalTest(genomes=genomes, useMergingAndSpeciation=False, criterion="me")
-
-# This plots the results for the first research question
-# Analysis.WithVsWithoutStructuralChange()
-# Analysis.plotLossvsDistanceData()
-# Analysis.plotNeatTestData(withSpeciationAndMerging=True, dataset=1)
-
-# This runs the tests for the second research question
-# Analysis.NeatVsNormalTest(genomes=genomes, useMergingAndSpeciation=False, criterion="me",
-#                           samples=200, optimizerIters=10, batchSize=100, maxPopSize=50)
-# Analysis.NeatVsNormalTest(genomes=genomes, useMergingAndSpeciation=True, criterion="me",
-#                           samples=200, optimizerIters=10, batchSize=100, maxPopSize=50)
-
-# This plots the results for the second research question
-#Analysis.BaseLineVsNEATLoss()
-#Analysis.BaseLineVsNEATStructuralDistance()
 

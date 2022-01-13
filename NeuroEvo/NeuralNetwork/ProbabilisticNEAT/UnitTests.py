@@ -114,7 +114,7 @@ def speciationTest():
 def neatTest():
     env = GymEnv('LunarLander-v2')
     rootGenome = ProbabilisticGenome(env.inputs(), env.outputs())
-    optim = ProbabilisticNEAT(iterations=100, maxPopSize=100, batchSize=200, episodeDur=400, showProgress=(1, 200),
+    optim = ProbabilisticNEAT(iterations=100, maxPopSize=100, batchSize=200, episodeDur=400, showProgress=(1, 400),
                  inclusionThreshold=5, useMerging=True, useSpeciation=True, useDistributions=False)
     optimized, losses, bestGenes = optim.run(rootGenome, env, showProgressBar=True)
     optimized.visualize()

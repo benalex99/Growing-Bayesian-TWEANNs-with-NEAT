@@ -186,6 +186,12 @@ class Genome():
             if not node.input:
                 node.layer = max(node.layer, 1)
 
+        self.maxLayer = 1
+        for node in self.nodes:
+            if not node.output:
+                self.maxLayer = max(self.maxLayer, node.layer)
+        self.maxLayer += 1
+
         for node in self.nodes:
             if node.output:
                 node.layer = self.maxLayer
@@ -199,6 +205,10 @@ class Genome():
                     group.append(node.nodeNr)
             # group.sort(reverse= True)
             layerGroups.append(group)
+        if len(layerGroups[len(layerGroups)-1]) > 4:
+            print(layerGroups)
+            print(self.nodes)
+            print(self.edges)
         return layerGroups
 
     def copy(self):
@@ -206,22 +216,23 @@ class Genome():
 
     def updateLayers(self):
         for edge in self.edges:
-            self.increaseLayers(self.nodes[edge.fromNr],self.nodes[edge.toNr])
+            if edge.enabled:
+                self.increaseLayers(self.nodes[edge.fromNr],self.nodes[edge.toNr])
 
-        maxLayer = 0
         for node in self.nodes:
-            maxLayer = max(maxLayer, node.layer)
+            if not node.output:
+                self.maxLayer = max(self.maxLayer, node.layer)
+        self.maxLayer += 1
 
         for node in self.nodes:
             if node.output:
-                node.layer = maxLayer
+                node.layer = self.maxLayer
 
     def increaseLayers(self,fromNode, toNode):
         if(fromNode.layer >= toNode.layer):
             toNode.layer = fromNode.layer + 1
             for nodeNr in toNode.outputtingTo:
                 self.increaseLayers(toNode, self.nodes[nodeNr])
-            self.maxLayer = max(toNode.layer, self.maxLayer)
 
     def __repr__(self):
         str = "nodes: \n"

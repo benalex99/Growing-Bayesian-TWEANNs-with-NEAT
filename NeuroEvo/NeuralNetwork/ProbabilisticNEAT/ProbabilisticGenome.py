@@ -22,7 +22,6 @@ class ProbabilisticGenome(Genome.Genome):
     def __init__(self, inputSize, outputSize):
         super(ProbabilisticGenome, self).__init__(inputSize, outputSize)
         self.nodes = []
-        self.maxLayer = 1
 
         for i in range(inputSize):
             node = AdvancedNodeGene.AdvancedNodeGene(len(self.nodes),layer = 0, input = True)
