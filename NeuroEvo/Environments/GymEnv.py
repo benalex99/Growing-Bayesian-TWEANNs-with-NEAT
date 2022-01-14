@@ -21,7 +21,7 @@ class GymEnv:
             random.seed(seed)
             observation = self.env.reset()
             nn = genome.toNN()
-            cumReward = 0
+            cumReward = 0 
             done = False
 
             for _ in range(duration):
